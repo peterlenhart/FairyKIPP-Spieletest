@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>FAIRY KIPP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Montserrat:wght@500;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root{
+      /* Spielerfarben (Basis, bleiben vorhanden) */
+      --fk-blue: rgb(0, 101, 171);
+      --fk-violet: rgb(170, 0, 120);
+      --fk-green: rgb(59, 165, 43);
+      --fk-orange: rgb(242, 150, 0);
+
+      /* Hintergrund / Panel */
+      --fk-bg: #2f1b12;
+      --fk-bg-deep: #23130d;
+      --fk-panel: #d8c2a2;
+      --fk-panel-strong: #e6d4b8;
+      --fk-border: rgba(0,0,0,0.35);
+      --fk-text: #f7f2ea;
+      --fk-muted: rgba(247,242,234,0.72);
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; }
+
+    body{
+      background: linear-gradient(180deg,#3a2318 0%,#2f1b12 40%,#23130d 100%);
+      color: var(--fk-text);
+      font-family:"Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100dvh;
+      display:flex;
+      justify-content:center;
+      align-items:stretch;
+      padding: 18px 14px calc(22px + env(safe-area-inset-bottom));
+    }
+
+    .app{
+      width:100%;
+      max-width:520px;
+      display:flex;
+      flex-direction:column;
+      min-height: 100dvh;
+      gap: 0;
+    }
+
+    header{
+      text-align:center;
+      padding-top: 6px;
+      flex: 0 0 auto;
+    }
+
+    .logo-line{
+      display:inline-flex;
+      align-items:baseline;
+      gap:8px;
+    }
+    .logo-fairy{
+      font-family:"Pacifico", cursive;
+      font-size:2.1rem;
+      letter-spacing:0.04em;
+      color: var(--fk-orange);
+      text-shadow: 0 0 10px rgba(242,150,0,0.55);
+    }
+    .logo-kipp{
+      font-weight:700;
+      font-size:1.55rem;
+      letter-spacing:0.22em;
+      color: var(--fk-green); /* KIPP grün */
+      text-transform:uppercase;
+      text-shadow: 0 0 10px rgba(0,101,171,0.22);
+    }
+    .tagline{
+      margin-top:6px;
+      font-size:0.95rem;
+      color: var(--fk-muted);
+      letter-spacing:0.02em;
+      text-shadow: 0 1px 0 rgba(0,0,0,0.22);
+    }
+
+    .game{
+      flex: 1 1 auto;
+      display:flex;
+      flex-direction:column;
+      min-height: 0;
+      padding-top: clamp(22px, 5vh, 54px);
+      gap: 14px;
+    }
+
+    .btn-row{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    button{
+      border:none;
+      cursor:pointer;
+      font-family:inherit;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-main{
+      min-width: 190px;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      background: var(--fk-orange);
+      color:#2a160c;
+      box-shadow:
+        0 0 16px rgba(242,150,0,0.45),
+        0 10px 22px rgba(0,0,0,0.20);
+    }
+    .btn-main:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.95); }
+
+    .btn-yes, .btn-no{
+      min-width: 168px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color:#fff;
+    }
+    .btn-yes{
+      background: var(--fk-green);
+      box-shadow:
+        0 0 14px rgba(59,165,43,0.40),
+        0 10px 20px rgba(0,0,0,0.18);
+    }
+    .btn-no{
+      background: var(--fk-violet);
+      box-shadow:
+        0 0 14px rgba(170,0,120,0.35),
+        0 10px 20px rgba(0,0,0,0.16);
+      border: none;
+    }
+    .btn-yes:active, .btn-no:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.95); }
+
+    .story{
+      width:100%;
+      border: 1px solid var(--fk-border);
+      border-radius: 14px;
+      padding: 16px 16px;
+      min-height: 150px;
+      max-height: 240px;
+      overflow-y:auto;
+      text-align:center;
+      line-height: 1.7;
+      font-size: 1.35rem;
+      background: linear-gradient(180deg, var(--fk-panel-strong), var(--fk-panel));
+      color:#2a160c;
+      box-shadow:
+        0 18px 28px rgba(0,0,0,0.22),
+        inset 0 1px 0 rgba(255,255,255,0.10);
+    }
+    .story.muted{
+      color: rgba(42,22,12,0.62);
+      font-style: italic;
+      font-size: 1.0rem;
+      font-weight: 500;
+    }
+    .story{ cursor:pointer; }
+    .story:active{ filter: brightness(1.04); }
+
+    .confirm-inline{
+      display:none;
+      width:100%;
+      margin-top: 2px;
+    }
+    .confirm-card{
+      width:100%;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.18);
+      padding: 12px;
+      box-shadow:
+        0 18px 26px rgba(0,0,0,0.22),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .confirm-title{
+      text-align:center;
+      font-size:0.9rem;
+      color: var(--fk-muted);
+      letter-spacing:0.10em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .confirm-row{
+      display:flex;
+      justify-content:center;
+      gap:12px;
+    }
+    .mini{
+      width:56px;
+      height:56px;
+      border-radius: 12px;
+      font-size: 1.6rem;
+      font-weight: 900;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color:#fff;
+      box-shadow: 0 10px 18px rgba(0,0,0,0.16);
+    }
+    .mini.ok{ border-color: rgba(59,165,43,0.75); }
+    .mini.no{ border-color: rgba(255,107,129,0.75); }
+    .mini:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.95); }
+
+    .bottom{
+      margin-top: clamp(18px, 5vh, 56px);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 12px;
+      padding-bottom: clamp(14px, 3vh, 34px);
+    }
+
+    .scoreValue{
+      text-align:center;
+      font-size: 4.2rem;
+      font-weight: 900;
+      letter-spacing:0.02em;
+      line-height: 1;
+      min-width: 70px;
+      color: var(--fk-orange);
+      text-shadow:
+        0 0 12px rgba(242,150,0,0.22),
+        0 10px 24px rgba(0,0,0,0.20);
+    }
+
+    .nav-row{
+      width: 100%;
+      display:flex;
+      justify-content:space-between;
+      gap: 12px;
+      padding: 0 6px;
+    }
+
+    .linkbtn{
+      background: transparent;
+      color: rgba(247,242,234,0.80);
+      text-decoration: underline;
+      padding: 10px 6px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .linkbtn:active{
+      color:#fff;
+      background: rgba(255,255,255,0.06);
+      text-decoration:none;
+    }
+
+    .locked{
+      opacity: 0.45;
+      pointer-events: none;
+      filter: grayscale(0.2);
+    }
+
+    .hidden{ display:none !important; }
+
+    .endscreen{
+      flex: 1 1 auto;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-start;
+      padding-top: clamp(12px, 3vh, 34px);
+      padding-bottom: clamp(16px, 3vh, 34px);
+      min-height: 0;
+      gap: 18px;
+    }
+
+    .end-center{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap: 16px;
+      text-align:center;
+      padding: 6px 6px 0;
+      margin-top: clamp(0px, 4vh, 42px);
+    }
+
+    .end-number{
+      font-size: 7.8rem;
+      line-height: 0.95;
+      font-weight: 900;
+      color: var(--fk-orange);
+      text-shadow:
+        0 0 18px rgba(242,150,0,0.20),
+        0 14px 26px rgba(0,0,0,0.18);
+    }
+
+    .end-text{
+      color: var(--fk-text);
+      font-size: 1.25rem;
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+      text-shadow: 0 1px 0 rgba(0,0,0,0.22);
+    }
+    .end-text .big{
+      display:block;
+      font-size: 1.55rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 4px 0;
+      color: var(--fk-text);
+    }
+    .end-text .muted{
+      color: var(--fk-muted);
+      font-size: 1.05rem;
+      margin-top: 2px;
+    }
+
+    .end-nav{
+      margin-top: clamp(12px, 6vh, 60px);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <header>
+      <div class="logo-line">
+        <span class="logo-fairy">Fairy</span>
+        <span class="logo-kipp">KIPP</span>
+      </div>
+      <div class="tagline">Unendlich viele KIPP-Geschichten</div>
+    </header>
+
+    <div id="game" class="game">
+      <div class="btn-row">
+        <button id="fairy-btn" class="btn-main">FAIRY</button>
+      </div>
+
+      <div id="story" class="story muted" title="Tippe hier oder auf FAIRY/WEITER">
+        Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-erkippt" class="btn-yes">FAIRY ERKIPPT</button>
+        <button id="btn-nicht" class="btn-no">NICHT ERKIPPT</button>
+      </div>
+
+      <div id="confirmInline" class="confirm-inline">
+        <div class="confirm-card">
+          <div class="confirm-title">FAIRY ERKIPPT bestätigen?</div>
+          <div class="confirm-row">
+            <button id="confirm-ok" class="mini ok" aria-label="Bestätigen">✓</button>
+            <button id="confirm-no" class="mini no" aria-label="Abbrechen">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom">
+        <div id="score" class="scoreValue">0</div>
+        <div class="nav-row">
+          <button id="newgame" class="linkbtn">Neues Spiel</button>
+          <button id="home" class="linkbtn">Zur Startseite</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="endscreen" class="endscreen hidden">
+      <div class="end-center">
+        <div id="endScore" class="end-number">0</div>
+        <div class="end-text">
+          <div>Perfekte</div>
+          <span class="big">FAIRY KIPPs</span>
+          <div class="muted">von 6 möglichen</div>
+        </div>
+      </div>
+      <div class="nav-row end-nav">
+        <button id="end-newgame" class="linkbtn">Neues Spiel</button>
+        <button id="end-home" class="linkbtn">Zur Startseite</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // -----------------------------
+    // Proxy-Konfiguration (serverseitig)
+    // -----------------------------
+    const PROXY_ENDPOINT = "/api/fairy";
+
+    function getTokenFromUrl(){
+      const u = new URL(window.location.href);
+      return u.searchParams.get("t") || "";
+    }
+
+    function goHomePreserveToken(){
+      const token = getTokenFromUrl();
+      const base = "./index.html";
+      window.location.href = token ? `${base}?t=${encodeURIComponent(token)}` : base;
+    }
+
+    // -----------------------------
+    // Konfiguration (Spieldaten)
+    // -----------------------------
+    const motifsData = [
+      { key: "Wasserball",  article: "der",  noun: "Wasserball"  },
+      { key: "Auto",        article: "das",  noun: "Auto"        },
+      { key: "Farbfleck",   article: "der",  noun: "Farbfleck"   },
+      { key: "Buch",        article: "das",  noun: "Buch"        },
+      { key: "Gießkanne",   article: "die",  noun: "Gießkanne"   },
+      { key: "Kerze",       article: "die",  noun: "Kerze"       },
+      { key: "Blume",       article: "die",  noun: "Blume"       },
+      { key: "Fisch",       article: "der",  noun: "Fisch"       },
+      { key: "Schmetterling", article: "der", noun: "Schmetterling" },
+      { key: "Schuh",       article: "der",  noun: "Schuh"       },
+      { key: "Tasse",       article: "die",  noun: "Tasse"       },
+      { key: "T-Shirt",     article: "das",  noun: "T-Shirt"     }
+    ];
+
+    const colorsData = ["grüne", "blaue", "violette", "orangefarbene"];
+
+    const motifVerbBase = {
+      Wasserball: ["platschte","plumpste","spritzte","hüpfte","polterte","ploppte"],
+      Auto: ["brummte","knatterte","röhrte","tuckerte","schnurrte","hupte","quietschte","dröhnte","heulte","fauchte"],
+      Farbfleck: ["tropfte","kleckste","spritzte","schmierte","kleckerte","schmatzte"],
+      Buch: ["raschelte","blätterte","murmelte","seufzte","flüsterte","knisterte","wisperte","brummte","klappte"],
+      Gießkanne: ["plätscherte","tropfte","gluckerte","schwappte","gluckste","schwallte","gurgelte"],
+      Kerze: ["flackerte","knisterte","zischte","glomm","flüsterte","seufzte","hauchte"],
+      Blume: ["flüsterte","hauchte","seufzte","wisperte","raschelte","murmelte","säuselte","flötete"],
+      Fisch: ["blubberte","gluckerte","sprudelte","murmelte","schmatzte","zischte","schlürfte","schwapperte","gluckste"],
+      Schmetterling: ["flüsterte","wisperte","hauchte","seufzte","säuselte","murmelte","kicherte","trillierte","zirpte"],
+      Schuh: ["quietschte","klackte","schlurfte","knirschte","tappte","stapfte","polterte","scharrte","knarzte"],
+      Tasse: ["klirrte","klimperte","klackte","knackte","zitterte","murmelte","summte","brummte","seufzte"],
+      "T-Shirt": ["raschelte","flatterte","seufzte","wisperte","knisterte","murmelte","hauchte","säuselte"]
+    };
+
+    // -----------------------------
+    // UI
+    // -----------------------------
+    const fairyBtn = document.getElementById("fairy-btn");
+    const storyEl = document.getElementById("story");
+    const btnErkippt = document.getElementById("btn-erkippt");
+    const btnNicht = document.getElementById("btn-nicht");
+    const scoreEl = document.getElementById("score");
+    const endScoreEl = document.getElementById("endScore");
+    const newgameBtn = document.getElementById("newgame");
+    const homeBtn = document.getElementById("home");
+    const endNewgameBtn = document.getElementById("end-newgame");
+    const endHomeBtn = document.getElementById("end-home");
+    const confirmInline = document.getElementById("confirmInline");
+    const confirmOk = document.getElementById("confirm-ok");
+    const confirmNo = document.getElementById("confirm-no");
+    const gameEl = document.getElementById("game");
+    const endscreenEl = document.getElementById("endscreen");
+
+    // -----------------------------
+    // Spielzustand
+    // -----------------------------
+    let unusedMotifs = [];
+    let unusedVerbsByMotif = {};
+    let currentMotif = null;
+    let currentVerb = null;
+    let currentColor = null;
+    let currentStoryFullPlain = "";
+    let currentTailPlain = "";
+    let currentChunks = [];
+    let currentChunkIndex = 0;
+    let score = 0;
+    let attempts = 0;
+    const maxAttempts = 6;
+
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    function shuffleArray(arr){
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function initUnusedMotifs(){ unusedMotifs = motifsData.slice(); }
+
+    function chooseMotifNoImmediateRepeat(){
+      if (unusedMotifs.length === 0) initUnusedMotifs();
+      const idx = Math.floor(Math.random() * unusedMotifs.length);
+      const motif = unusedMotifs[idx];
+      unusedMotifs.splice(idx, 1);
+      return motif;
+    }
+
+    function getAllowedVerbsForMotif(noun){
+      const base = motifVerbBase[noun];
+      return base ? base.slice() : [];
+    }
+
+    function initUnusedVerbsForMotif(noun){
+      const all = getAllowedVerbsForMotif(noun);
+      unusedVerbsByMotif[noun] = shuffleArray(all);
+    }
+
+    function chooseVerbForMotif(noun){
+      if (!unusedVerbsByMotif[noun] || unusedVerbsByMotif[noun].length === 0){
+        initUnusedVerbsForMotif(noun);
+      }
+      return unusedVerbsByMotif[noun].pop();
+    }
+
+    // Farbadjektive NICHT mehr einfärben:
+    function highlightTailColor(text, adjective){
+      return escapeHtml(text);
+    }
+
+    function normalizeQuoteAndComma(baseText){
+      let t = baseText.trim();
+      t = t.replace(/[„“”]/g, '"');
+
+      if (!/[.!?]$/.test(t) && !/[.!?]"$/.test(t)){
+        t += ".";
+      }
+
+      if (/[.!?]"$/.test(t)){
+        t = t.replace(/([.!?])"$/, '$1",');
+        return t + " ";
+      }
+
+      if (/[.!?]$/.test(t)){
+        t = t.replace(/([.!?])$/, '$1",');
+        return t + " ";
+      }
+
+      return t + '", ';
+    }
+
+    function setLockedUI(locked){
+      fairyBtn.classList.toggle("locked", locked);
+      btnErkippt.classList.toggle("locked", locked);
+      btnNicht.classList.toggle("locked", locked);
+      storyEl.classList.toggle("locked", locked);
+    }
+
+    function updateScore(){
+      scoreEl.textContent = String(score);
+      endScoreEl.textContent = String(score);
+    }
+
+    function showEndScreen(){
+      confirmInline.style.display = "none";
+      setLockedUI(true);
+      gameEl.classList.add("hidden");
+      endscreenEl.classList.remove("hidden");
+      updateScore();
+    }
+
+    function updateEndStateIfNeeded(){
+      if (attempts >= maxAttempts){
+        showEndScreen();
+      }
+    }
+
+    function clearCurrentFairyToStart(){
+      currentMotif = null;
+      currentVerb = null;
+      currentColor = null;
+      currentStoryFullPlain = "";
+      currentTailPlain = "";
+      currentChunks = [];
+      currentChunkIndex = 0;
+
+      fairyBtn.textContent = "FAIRY";
+      storyEl.classList.add("muted");
+      storyEl.innerHTML = 'Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.';
+    }
+
+    function resetAll(){
+      score = 0;
+      attempts = 0;
+      initUnusedMotifs();
+      unusedVerbsByMotif = {};
+
+      endscreenEl.classList.add("hidden");
+      gameEl.classList.remove("hidden");
+
+      confirmInline.style.display = "none";
+      setLockedUI(false);
+      clearCurrentFairyToStart();
+      updateScore();
+    }
+
+    // -----------------------------
+    // 3-Teil Split
+    // -----------------------------
+    function splitIntoThreeParts(storyPlain, tailPlain, colorAdj){
+      let base = storyPlain.trim();
+      const tail = tailPlain.trim();
+
+      const idxTail = base.lastIndexOf(tail);
+      if (idxTail !== -1){
+        base = base.slice(0, idxTail).trim();
+      }
+
+      const m = base.match(/^(.*?)(\b[^\s]+)\s*$/);
+      let baseWithoutVerb = base;
+      if (m && m[1] && m[2]){
+        baseWithoutVerb = m[1].trim();
+      }
+
+      const firstEnd = baseWithoutVerb.search(/[.!?]/);
+      let part1 = baseWithoutVerb;
+      let part2 = "";
+      if (firstEnd !== -1){
+        part1 = baseWithoutVerb.slice(0, firstEnd + 1).trim();
+        part2 = baseWithoutVerb.slice(firstEnd + 1).trim();
+      }
+
+      const verb = currentVerb || "";
+      const part3Plain = `${verb} ${tail}`.replace(/\s+/g," ").trim();
+      const part3Html = highlightTailColor(part3Plain, colorAdj);
+
+      return [
+        escapeHtml(part1),
+        escapeHtml(part2),
+        part3Html
+      ];
+    }
+
+    function takeFirstTwoSentences(text){
+      const matches = [...text.matchAll(/[.!?]/g)];
+      if (matches.length >= 2){
+        return text.slice(0, matches[1].index + 1).trim();
+      }
+      return text.trim();
+    }
+
+    // -----------------------------
+    // Server-Proxy Call (statt API-Key am Gerät)
+    // -----------------------------
+    async function generateFairy(){
+      if (attempts >= maxAttempts){
+        updateEndStateIfNeeded();
+        return;
+      }
+
+      const token = getTokenFromUrl();
+      if (!token){
+        storyEl.classList.remove("muted");
+        storyEl.textContent = "Test-Link ungültig: Token fehlt. Bitte den kompletten Verlag-Link verwenden.";
+        return;
+      }
+
+      const motifObj = chooseMotifNoImmediateRepeat();
+      const verb = chooseVerbForMotif(motifObj.noun);
+      const color = colorsData[Math.floor(Math.random() * colorsData.length)];
+
+      currentMotif = motifObj;
+      currentVerb = verb;
+      currentColor = color;
+
+      confirmInline.style.display = "none";
+      fairyBtn.textContent = "WEITER";
+      storyEl.classList.add("muted");
+      storyEl.textContent = "… KI schreibt eine neue Geschichte …";
+
+      try{
+        const resp = await fetch(`${PROXY_ENDPOINT}?t=${encodeURIComponent(token)}`, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({
+            motifNoun: motifObj.noun,
+            temperature: 0.8
+          })
+        });
+
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+        const data = await resp.json();
+        let text = (data.text || "").trim();
+        text = text.replace(/\s+/g, " ").trim();
+
+        let baseText = takeFirstTwoSentences(text);
+        if (!baseText){
+          baseText = 'Etwas Unbenanntes wartete geduldig am Rand des Spielfelds. "Jetzt kommt mein Moment!"';
+        }
+
+        const baseFixed = normalizeQuoteAndComma(baseText);
+
+        const tailPlain = `${motifObj.article} ${color} ${motifObj.noun}`;
+        const storyPlain = `${baseFixed}${verb} ${tailPlain}`.replace(/\s+/g," ").trim();
+
+        currentStoryFullPlain = storyPlain;
+        currentTailPlain = tailPlain;
+
+        currentChunks = splitIntoThreeParts(currentStoryFullPlain, currentTailPlain, color);
+        currentChunkIndex = 0;
+
+        storyEl.classList.remove("muted");
+        storyEl.innerHTML = currentChunks[0];
+
+      } catch(err){
+        console.error(err);
+        storyEl.classList.remove("muted");
+        storyEl.textContent = "Fehler beim Laden. Bitte Internet prüfen.";
+      }
+    }
+
+    function showChunk(i){
+      if (!currentChunks || currentChunks.length !== 3) return;
+      currentChunkIndex = Math.max(0, Math.min(2, i));
+      storyEl.classList.remove("muted");
+      storyEl.innerHTML = currentChunks[currentChunkIndex];
+    }
+
+    async function handleNext(){
+      if (attempts >= maxAttempts) return;
+
+      if (!currentChunks || currentChunks.length !== 3){
+        await generateFairy();
+        return;
+      }
+
+      if (currentChunkIndex < 2){
+        showChunk(currentChunkIndex + 1);
+      }
+    }
+
+    fairyBtn.addEventListener("click", handleNext);
+    storyEl.addEventListener("click", handleNext);
+
+    btnNicht.addEventListener("click", () => {
+      if (attempts >= maxAttempts) return;
+      attempts += 1;
+      confirmInline.style.display = "none";
+      updateEndStateIfNeeded();
+      if (attempts < maxAttempts){
+        clearCurrentFairyToStart();
+      }
+    });
+
+    btnErkippt.addEventListener("click", () => {
+      if (attempts >= maxAttempts) return;
+      confirmInline.style.display = "block";
+      confirmInline.scrollIntoView({ behavior:"smooth", block:"nearest" });
+    });
+
+    confirmOk.addEventListener("click", () => {
+      confirmInline.style.display = "none";
+      if (attempts >= maxAttempts) return;
+
+      attempts += 1;
+      score += 1;
+      updateScore();
+
+      updateEndStateIfNeeded();
+      if (attempts < maxAttempts){
+        clearCurrentFairyToStart();
+      }
+    });
+
+    confirmNo.addEventListener("click", () => {
+      confirmInline.style.display = "none";
+    });
+
+    newgameBtn.addEventListener("click", () => resetAll());
+    endNewgameBtn.addEventListener("click", () => resetAll());
+
+    homeBtn.addEventListener("click", () => goHomePreserveToken());
+    endHomeBtn.addEventListener("click", () => goHomePreserveToken());
+
+    (function init(){
+      resetAll();
+    })();
+  </script>
+</body>
+</html>
