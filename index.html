@@ -240,10 +240,11 @@
         0 10px 24px rgba(0,0,0,0.20);
     }
 
+    /* Nur noch 1 Button -> zentrieren */
     .nav-row{
       width: 100%;
       display:flex;
-      justify-content:space-between;
+      justify-content:center;
       gap: 12px;
       padding: 0 6px;
     }
@@ -370,7 +371,6 @@
         <div id="score" class="scoreValue">0</div>
         <div class="nav-row">
           <button id="newgame" class="linkbtn">Neues Spiel</button>
-          <button id="home" class="linkbtn">Zur Startseite</button>
         </div>
       </div>
     </div>
@@ -386,7 +386,6 @@
       </div>
       <div class="nav-row end-nav">
         <button id="end-newgame" class="linkbtn">Neues Spiel</button>
-        <button id="end-home" class="linkbtn">Zur Startseite</button>
       </div>
     </div>
 
@@ -401,12 +400,6 @@
     function getTokenFromUrl(){
       const u = new URL(window.location.href);
       return u.searchParams.get("t") || "";
-    }
-
-    function goHomePreserveToken(){
-      const token = getTokenFromUrl();
-      const base = "./index.html";
-      window.location.href = token ? `${base}?t=${encodeURIComponent(token)}` : base;
     }
 
     // -----------------------------
@@ -454,9 +447,7 @@
     const scoreEl = document.getElementById("score");
     const endScoreEl = document.getElementById("endScore");
     const newgameBtn = document.getElementById("newgame");
-    const homeBtn = document.getElementById("home");
     const endNewgameBtn = document.getElementById("end-newgame");
-    const endHomeBtn = document.getElementById("end-home");
     const confirmInline = document.getElementById("confirmInline");
     const confirmOk = document.getElementById("confirm-ok");
     const confirmNo = document.getElementById("confirm-no");
@@ -579,6 +570,21 @@
       }
     }
 
+    function setFairyButtonLabel(){
+      // Wenn 3. Teil angezeigt wird, soll der Button "LÖSCHEN" werden
+      if (currentChunks && currentChunks.length === 3 && currentChunkIndex === 2){
+        fairyBtn.textContent = "LÖSCHEN";
+        return;
+      }
+      // Wenn eine Fairy läuft (Chunks existieren), bleibt es "WEITER"
+      if (currentChunks && currentChunks.length === 3){
+        fairyBtn.textContent = "WEITER";
+        return;
+      }
+      // Startzustand
+      fairyBtn.textContent = "FAIRY";
+    }
+
     function clearCurrentFairyToStart(){
       currentMotif = null;
       currentVerb = null;
@@ -588,9 +594,11 @@
       currentChunks = [];
       currentChunkIndex = 0;
 
-      fairyBtn.textContent = "FAIRY";
+      confirmInline.style.display = "none";
       storyEl.classList.add("muted");
       storyEl.innerHTML = 'Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.';
+
+      setFairyButtonLabel();
     }
 
     function resetAll(){
@@ -716,11 +724,16 @@
 
         storyEl.classList.remove("muted");
         storyEl.innerHTML = currentChunks[0];
+        setFairyButtonLabel();
 
       } catch(err){
         console.error(err);
         storyEl.classList.remove("muted");
         storyEl.textContent = "Fehler beim Laden. Bitte Internet prüfen.";
+        // Button zurück auf FAIRY, damit man nicht in "WEITER" hängenbleibt
+        currentChunks = [];
+        currentChunkIndex = 0;
+        setFairyButtonLabel();
       }
     }
 
@@ -729,23 +742,46 @@
       currentChunkIndex = Math.max(0, Math.min(2, i));
       storyEl.classList.remove("muted");
       storyEl.innerHTML = currentChunks[currentChunkIndex];
+      setFairyButtonLabel();
     }
 
-    async function handleNext(){
+    // -----------------------------
+    // Klicklogik: FAIRY -> WEITER -> WEITER -> LÖSCHEN
+    // -----------------------------
+    async function handleFairyButton(){
       if (attempts >= maxAttempts) return;
 
+      // Start: neue Fairy generieren
       if (!currentChunks || currentChunks.length !== 3){
         await generateFairy();
         return;
       }
 
+      // Wenn letzter Teil angezeigt wird: Button ist LÖSCHEN -> zurück zum Start
+      if (currentChunkIndex >= 2){
+        clearCurrentFairyToStart();
+        return;
+      }
+
+      // Sonst normal weiter
+      showChunk(currentChunkIndex + 1);
+    }
+
+    async function handleStoryClick(){
+      if (attempts >= maxAttempts) return;
+
+      // Story click darf nur bis zum letzten Teil "weiterblättern"
+      if (!currentChunks || currentChunks.length !== 3){
+        await generateFairy();
+        return;
+      }
       if (currentChunkIndex < 2){
         showChunk(currentChunkIndex + 1);
       }
     }
 
-    fairyBtn.addEventListener("click", handleNext);
-    storyEl.addEventListener("click", handleNext);
+    fairyBtn.addEventListener("click", handleFairyButton);
+    storyEl.addEventListener("click", handleStoryClick);
 
     btnNicht.addEventListener("click", () => {
       if (attempts >= maxAttempts) return;
@@ -783,9 +819,6 @@
 
     newgameBtn.addEventListener("click", () => resetAll());
     endNewgameBtn.addEventListener("click", () => resetAll());
-
-    homeBtn.addEventListener("click", () => goHomePreserveToken());
-    endHomeBtn.addEventListener("click", () => goHomePreserveToken());
 
     (function init(){
       resetAll();
