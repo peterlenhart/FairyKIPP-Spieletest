@@ -152,6 +152,7 @@
         0 18px 28px rgba(0,0,0,0.22),
         inset 0 1px 0 rgba(255,255,255,0.10);
       cursor:pointer;
+      transition: opacity 180ms ease;
     }
     .story.muted{
       color: rgba(42,22,12,0.62);
@@ -202,7 +203,7 @@
       align-items:center;
       justify-content:center;
       transform: translateZ(0);
-      transition: transform 180ms ease, filter 180ms ease, opacity 180ms ease;
+      transition: transform 220ms ease, filter 220ms ease, opacity 220ms ease;
     }
     .pick-item:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.97); }
 
@@ -214,6 +215,36 @@
       background: rgba(255,255,255,0.60);
       border-color: rgba(242,150,0,0.55);
       box-shadow: 0 0 14px rgba(242,150,0,0.18), 0 12px 22px rgba(0,0,0,0.12);
+    }
+
+    /* WEICHER: die 3 anderen verschwinden sauber */
+    .pick-item.gone{
+      opacity: 0 !important;
+      transform: translateY(10px) scale(0.98) !important;
+      filter: grayscale(0.1) !important;
+      pointer-events: none !important;
+    }
+
+    /* kleines Zwischenbild: gewähltes Motiv bleibt kurz sichtbar */
+    .chosen-wrap{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+      min-height: 120px;
+    }
+    .chosen-word{
+      font-weight: 900;
+      font-size: 1.6rem;
+      letter-spacing: 0.02em;
+      color:#2a160c;
+    }
+    .chosen-loading{
+      font-size: 1.0rem;
+      font-weight: 600;
+      color: rgba(42,22,12,0.62);
+      font-style: italic;
     }
 
     .confirm-inline{
@@ -698,6 +729,7 @@
 
       confirmInline.style.display = "none";
       storyEl.classList.add("muted");
+      storyEl.style.opacity = "1";
       storyEl.innerHTML = 'Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.';
       setFairyButtonLabel();
     }
@@ -763,6 +795,7 @@
     // -----------------------------
     function renderPickOptions(){
       storyEl.classList.remove("muted");
+      storyEl.style.opacity = "1";
       storyEl.innerHTML = `
         <div class="pick-wrap">
           <div class="pick-title">Motiv wählen</div>
@@ -786,6 +819,8 @@
       }, { once: true });
     }
 
+    function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
     async function choosePickOption(index, gridEl){
       if (!isPicking) return;
       if (!pickOptions || pickOptions.length !== 4) return;
@@ -794,17 +829,31 @@
 
       // optischer Effekt: alle dimmen, gewähltes hervorheben
       gridEl.classList.add("picking");
-      const items = gridEl.querySelectorAll(".pick-item");
+      const items = Array.from(gridEl.querySelectorAll(".pick-item"));
       items.forEach((el, i) => {
         if (i === index) el.classList.add("selected");
+        else el.classList.add("gone"); // <- die 3 anderen weich ausblenden
       });
 
-      // kleine Verzögerung für "Plopp"
-      await new Promise(r => setTimeout(r, 220));
+      // kurz stehen lassen (damit’s nicht "hart" wirkt)
+      await wait(220);
 
       // jetzt erst wirklich verbrauchen und Story generieren
       isPicking = false;
       consumeCard(card);
+
+      // Zwischenbild: gewähltes Motiv bleibt kurz sichtbar + "KI schreibt..."
+      const chosenWord = escapeHtml(card.motif.noun);
+      storyEl.style.opacity = "0";
+      await wait(140);
+      storyEl.classList.remove("muted");
+      storyEl.innerHTML = `
+        <div class="chosen-wrap">
+          <div class="chosen-word">${chosenWord}</div>
+          <div class="chosen-loading">… KI schreibt eine neue Geschichte …</div>
+        </div>
+      `;
+      storyEl.style.opacity = "1";
 
       // Auswahl leeren, damit Klicks nicht doppelt feuern
       pickOptions = [];
@@ -835,8 +884,6 @@
       currentColor = color;
 
       confirmInline.style.display = "none";
-      storyEl.classList.add("muted");
-      storyEl.textContent = "… KI schreibt eine neue Geschichte …";
 
       try{
         const resp = await fetch(`${PROXY_ENDPOINT}?t=${encodeURIComponent(token)}`, {
@@ -869,8 +916,12 @@
         currentChunks = splitIntoThreeParts(currentStoryFullPlain, currentTailPlain, color);
         currentChunkIndex = 0;
 
+        // weicher Übergang in Satz 1 (kein "hartes" Umspringen)
+        storyEl.style.opacity = "0";
+        await wait(120);
         storyEl.classList.remove("muted");
         storyEl.innerHTML = currentChunks[0];
+        storyEl.style.opacity = "1";
         setFairyButtonLabel();
 
       } catch(err){
@@ -890,9 +941,15 @@
     function showChunk(i){
       if (!currentChunks || currentChunks.length !== 3) return;
       currentChunkIndex = Math.max(0, Math.min(2, i));
-      storyEl.classList.remove("muted");
-      storyEl.innerHTML = currentChunks[currentChunkIndex];
-      setFairyButtonLabel();
+
+      // weich blenden beim Umblättern
+      storyEl.style.opacity = "0";
+      setTimeout(() => {
+        storyEl.classList.remove("muted");
+        storyEl.innerHTML = currentChunks[currentChunkIndex];
+        storyEl.style.opacity = "1";
+        setFairyButtonLabel();
+      }, 120);
     }
 
     // -----------------------------
