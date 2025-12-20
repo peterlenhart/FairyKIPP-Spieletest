@@ -225,7 +225,7 @@
       pointer-events: none !important;
     }
 
-    /* kleines Zwischenbild: gewähltes Motiv bleibt kurz sichtbar */
+    /* (bleibt drin, auch wenn nicht mehr genutzt – damit nix verrutscht) */
     .chosen-wrap{
       display:flex;
       flex-direction:column;
@@ -575,8 +575,6 @@
       remainingDeck = shuffleArray(d);
     }
 
-    // zieht 4 Optionen, aber verbraucht noch nichts
-    // (wir versuchen 4 unterschiedliche MOTIVE zu zeigen, damit’s spielerisch schöner ist)
     function dealPickOptions(){
       if (!remainingDeck || remainingDeck.length < 4){
         buildDeck();
@@ -585,7 +583,6 @@
       const opts = [];
       const usedNouns = new Set();
 
-      // 1) zuerst versuchen: verschiedene Motive
       for (let i = 0; i < remainingDeck.length && opts.length < 4; i++){
         const card = remainingDeck[i];
         const noun = card.motif.noun;
@@ -594,7 +591,6 @@
         opts.push(card);
       }
 
-      // 2) falls zu wenig (theoretisch), füllen wir einfach auf
       if (opts.length < 4){
         for (let i = 0; i < remainingDeck.length && opts.length < 4; i++){
           const card = remainingDeck[i];
@@ -606,7 +602,6 @@
       isPicking = true;
     }
 
-    // verbraucht genau die ausgewählte Karte aus remainingDeck
     function consumeCard(card){
       const idx = remainingDeck.findIndex(c =>
         c.motif.noun === card.motif.noun &&
@@ -616,7 +611,6 @@
         remainingDeck.splice(idx, 1);
         return;
       }
-      // Fallback: wenn aus irgendeinem Grund nicht gefunden, Deck neu + weiter
       buildDeck();
     }
 
@@ -649,7 +643,6 @@
       return unusedVerbsByMotif[noun].pop();
     }
 
-    // Farbadjektive NICHT mehr einfärben:
     function highlightTailColor(text, adjective){
       return escapeHtml(text);
     }
@@ -711,7 +704,6 @@
         fairyBtn.textContent = "WEITER";
         return;
       }
-      // wenn wir in der Auswahl sind, bleibt der Button FAIRY (zweiter Klick mischt neu)
       fairyBtn.textContent = "FAIRY";
     }
 
@@ -832,31 +824,25 @@
       const items = Array.from(gridEl.querySelectorAll(".pick-item"));
       items.forEach((el, i) => {
         if (i === index) el.classList.add("selected");
-        else el.classList.add("gone"); // <- die 3 anderen weich ausblenden
+        else el.classList.add("gone");
       });
 
-      // kurz stehen lassen (damit’s nicht "hart" wirkt)
+      // kurz stehen lassen
       await wait(220);
 
       // jetzt erst wirklich verbrauchen und Story generieren
       isPicking = false;
       consumeCard(card);
 
-      // Zwischenbild: gewähltes Motiv bleibt kurz sichtbar + "KI schreibt..."
-      const chosenWord = escapeHtml(card.motif.noun);
-      storyEl.style.opacity = "0";
-      await wait(140);
-      storyEl.classList.remove("muted");
-      storyEl.innerHTML = `
-        <div class="chosen-wrap">
-          <div class="chosen-word">${chosenWord}</div>
-          <div class="chosen-loading">… KI schreibt eine neue Geschichte …</div>
-        </div>
-      `;
-      storyEl.style.opacity = "1";
-
       // Auswahl leeren, damit Klicks nicht doppelt feuern
       pickOptions = [];
+
+      // ✅ WICHTIG: Kein extra Motiv mehr anzeigen – nur neutraler Ladehinweis
+      storyEl.style.opacity = "0";
+      await wait(120);
+      storyEl.classList.remove("muted");
+      storyEl.innerHTML = "… KI schreibt eine neue Geschichte …";
+      storyEl.style.opacity = "1";
 
       await generateFairyForCard(card);
     }
@@ -916,7 +902,7 @@
         currentChunks = splitIntoThreeParts(currentStoryFullPlain, currentTailPlain, color);
         currentChunkIndex = 0;
 
-        // weicher Übergang in Satz 1 (kein "hartes" Umspringen)
+        // weicher Übergang in Satz 1
         storyEl.style.opacity = "0";
         await wait(120);
         storyEl.classList.remove("muted");
@@ -929,7 +915,6 @@
         storyEl.classList.remove("muted");
         storyEl.textContent = "Fehler beim Laden. Bitte Internet prüfen.";
 
-        // zurücksetzen, damit man nicht hängt
         currentChunks = [];
         currentChunkIndex = 0;
         pickOptions = [];
@@ -942,7 +927,6 @@
       if (!currentChunks || currentChunks.length !== 3) return;
       currentChunkIndex = Math.max(0, Math.min(2, i));
 
-      // weich blenden beim Umblättern
       storyEl.style.opacity = "0";
       setTimeout(() => {
         storyEl.classList.remove("muted");
@@ -953,16 +937,12 @@
     }
 
     // -----------------------------
-    // Klicklogik:
-    // FAIRY -> zeigt 4 Motive
-    // Klick Motiv -> Story Satz 1
-    // danach: WEITER -> WEITER -> LÖSCHEN
+    // Klicklogik
     // -----------------------------
     async function handleFairyButton(){
       updateEndStateIfNeeded();
       if (score >= WIN_SCORE) return;
 
-      // Wenn eine Story läuft:
       if (currentChunks && currentChunks.length === 3){
         if (currentChunkIndex >= 2){
           clearCurrentFairyToStart();
@@ -972,7 +952,6 @@
         return;
       }
 
-      // Wenn wir gerade Auswahl anzeigen: FAIRY klick = neue 4 Optionen
       if (isPicking){
         dealPickOptions();
         renderPickOptions();
@@ -980,7 +959,6 @@
         return;
       }
 
-      // Start: 4 Motive anzeigen
       dealPickOptions();
       renderPickOptions();
       setFairyButtonLabel();
@@ -990,17 +968,13 @@
       updateEndStateIfNeeded();
       if (score >= WIN_SCORE) return;
 
-      // Wenn Auswahl angezeigt wird, soll ein Klick NICHT "weiterblättern".
-      // (Auswahl erfolgt nur auf die 4 Items)
       if (isPicking) return;
 
-      // Wenn noch keine Story läuft: wie Button = Auswahl anzeigen
       if (!currentChunks || currentChunks.length !== 3){
         await handleFairyButton();
         return;
       }
 
-      // Story weiterblättern bis zum letzten Teil
       if (currentChunkIndex < 2){
         showChunk(currentChunkIndex + 1);
       }
@@ -1010,7 +984,7 @@
     storyEl.addEventListener("click", handleStoryClick);
 
     // -----------------------------
-    // NUR noch "FAIRY ERKIPPT" -> Bestätigung -> Punkt
+    // NUR noch "FAIRY ERKIPPT"
     // -----------------------------
     btnErkippt.addEventListener("click", () => {
       updateEndStateIfNeeded();
