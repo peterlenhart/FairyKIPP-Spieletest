@@ -42,28 +42,83 @@ export default async function handler(req, res) {
         "Satz 2 endet mit einem abschließenden Anführungszeichen und einem Satzzeichen (. ? oder !).\n"
     };
 
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [systemMessage, userMessage],
-        temperature: typeof temperature === "number" ? temperature : 0.8,
-        max_tokens: 220,
-      }),
-    });
+    // --- Helpers: harte Regeln absichern ---
+    const normalize = (s) => String(s || "").replace(/\s+/g, " ").trim();
 
-    if (!resp.ok) {
-      const errText = await resp.text().catch(() => "");
-      return res.status(resp.status).json({ error: "OpenAI error", details: errText });
+    const splitIntoSentences = (s) => {
+      // sehr robust: nimmt Sätze bis inkl. Satzzeichen
+      const m = s.match(/[^.!?]+[.!?]+/g);
+      if (m && m.length) return m.map(x => x.trim());
+      // fallback: falls kein Satzzeichen vorkommt
+      return [s.trim()].filter(Boolean);
+    };
+
+    const containsForbidden = (text) => {
+      const t = text.toLowerCase();
+
+      // Motivwort darf nicht vorkommen (case-insensitive, als Wortteil auch verboten)
+      const motif = String(motifNoun).toLowerCase();
+      if (motif && t.includes(motif)) return true;
+
+      // Farbwörter sperren (falls jemals)
+      const colorWords = ["grün", "grüne", "blaue", "blau", "violett", "orange", "orangefarben", "orangefarbene", "rot", "gelb"];
+      if (colorWords.some(w => t.includes(w))) return true;
+
+      // "sagte/meinte/dachte" sperren
+      const speechVerbs = ["sagte", "meinte", "dachte"];
+      if (speechVerbs.some(w => t.includes(w))) return true;
+
+      return false;
+    };
+
+    // wir geben uns 2 Versuche, falls das Modell einmal ausbricht
+    let finalText = "";
+    const maxTries = 2;
+
+    for (let attempt = 1; attempt <= maxTries; attempt++) {
+      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [systemMessage, userMessage],
+          temperature: typeof temperature === "number" ? temperature : 0.8,
+          max_tokens: 220,
+        }),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        return res.status(resp.status).json({ error: "OpenAI error", details: errText });
+      }
+
+      const data = await resp.json();
+      let text = normalize(data?.choices?.[0]?.message?.content);
+
+      // exakt 2 Sätze erzwingen (falls mehr)
+      const sentences = splitIntoSentences(text);
+      if (sentences.length >= 2) {
+        text = normalize(`${sentences[0]} ${sentences[1]}`);
+      } else {
+        text = normalize(text);
+      }
+
+      // harte Verbote prüfen
+      if (!containsForbidden(text) && splitIntoSentences(text).length === 2) {
+        finalText = text;
+        break;
+      }
+
+      // wenn letzter Versuch: fallback statt Müll zurückgeben
+      if (attempt === maxTries) {
+        finalText = 'Etwas Unbenanntes wartete still am Rand. "Jetzt ist Bewegung drin!"';
+      }
     }
 
-    const data = await resp.json();
-    const text = data?.choices?.[0]?.message?.content?.trim() || "";
-    return res.status(200).json({ text });
+    return res.status(200).json({ text: finalText });
 
   } catch (e) {
     return res.status(500).json({ error: "Server error" });
