@@ -161,6 +161,61 @@
     }
     .story:active{ filter: brightness(1.04); }
 
+    /* ---- Motiv-Auswahl im Storyfeld ---- */
+    .pick-wrap{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      align-items:center;
+      justify-content:center;
+      min-height: 120px;
+    }
+    .pick-title{
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(42,22,12,0.75);
+    }
+    .pick-grid{
+      width:100%;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      align-items:stretch;
+    }
+    .pick-item{
+      border-radius: 12px;
+      padding: 10px 10px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.35);
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color:#2a160c;
+      box-shadow: 0 10px 18px rgba(0,0,0,0.10);
+      cursor:pointer;
+      user-select:none;
+      text-align:center;
+      line-height: 1.2;
+      min-height: 52px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transform: translateZ(0);
+      transition: transform 180ms ease, filter 180ms ease, opacity 180ms ease;
+    }
+    .pick-item:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.97); }
+
+    .pick-grid.picking .pick-item{ opacity: 0.35; filter: grayscale(0.1); }
+    .pick-grid.picking .pick-item.selected{
+      opacity: 1;
+      filter: none;
+      transform: scale(1.06);
+      background: rgba(255,255,255,0.60);
+      border-color: rgba(242,150,0,0.55);
+      box-shadow: 0 0 14px rgba(242,150,0,0.18), 0 12px 22px rgba(0,0,0,0.12);
+    }
+
     .confirm-inline{
       display:none;
       width:100%;
@@ -339,7 +394,6 @@
         Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.
       </div>
 
-      <!-- NUR NOCH EIN BUTTON, MITTIG -->
       <div class="btn-row">
         <button id="btn-erkippt" class="btn-yes">FAIRY ERKIPPT</button>
       </div>
@@ -462,11 +516,14 @@
 
     let score = 0;
 
+    // Auswahlmodus
+    let pickOptions = []; // 4 Karten (motif+color)
+    let isPicking = false;
+
     // -----------------------------
-    // 48er-Deck (Motiv × Farbe) ohne Doppler
+    // 48er-Deck (Motiv × Farbe) ohne Doppler (bis Deck leer)
     // -----------------------------
-    let deck = [];
-    let deckIndex = 0;
+    let remainingDeck = [];
 
     function shuffleArray(arr){
       const a = arr.slice();
@@ -484,15 +541,52 @@
           d.push({ motif, color });
         }
       }
-      deck = shuffleArray(d);
-      deckIndex = 0;
+      remainingDeck = shuffleArray(d);
     }
 
-    function drawFromDeck(){
-      if (!deck || deck.length !== motifsData.length * colorsData.length || deckIndex >= deck.length){
+    // zieht 4 Optionen, aber verbraucht noch nichts
+    // (wir versuchen 4 unterschiedliche MOTIVE zu zeigen, damit’s spielerisch schöner ist)
+    function dealPickOptions(){
+      if (!remainingDeck || remainingDeck.length < 4){
         buildDeck();
       }
-      return deck[deckIndex++];
+
+      const opts = [];
+      const usedNouns = new Set();
+
+      // 1) zuerst versuchen: verschiedene Motive
+      for (let i = 0; i < remainingDeck.length && opts.length < 4; i++){
+        const card = remainingDeck[i];
+        const noun = card.motif.noun;
+        if (usedNouns.has(noun)) continue;
+        usedNouns.add(noun);
+        opts.push(card);
+      }
+
+      // 2) falls zu wenig (theoretisch), füllen wir einfach auf
+      if (opts.length < 4){
+        for (let i = 0; i < remainingDeck.length && opts.length < 4; i++){
+          const card = remainingDeck[i];
+          opts.push(card);
+        }
+      }
+
+      pickOptions = opts.slice(0,4);
+      isPicking = true;
+    }
+
+    // verbraucht genau die ausgewählte Karte aus remainingDeck
+    function consumeCard(card){
+      const idx = remainingDeck.findIndex(c =>
+        c.motif.noun === card.motif.noun &&
+        c.color === card.color
+      );
+      if (idx !== -1){
+        remainingDeck.splice(idx, 1);
+        return;
+      }
+      // Fallback: wenn aus irgendeinem Grund nicht gefunden, Deck neu + weiter
+      buildDeck();
     }
 
     // -----------------------------
@@ -524,6 +618,7 @@
       return unusedVerbsByMotif[noun].pop();
     }
 
+    // Farbadjektive NICHT mehr einfärben:
     function highlightTailColor(text, adjective){
       return escapeHtml(text);
     }
@@ -566,8 +661,6 @@
       gameEl.classList.add("hidden");
       endscreenEl.classList.remove("hidden");
       updateScore();
-
-      // Endtext fix auf 4 gewonnen
       endLine1.textContent = `${WIN_SCORE} perfekte`;
       endLine2.textContent = "gewonnen";
     }
@@ -587,6 +680,7 @@
         fairyBtn.textContent = "WEITER";
         return;
       }
+      // wenn wir in der Auswahl sind, bleibt der Button FAIRY (zweiter Klick mischt neu)
       fairyBtn.textContent = "FAIRY";
     }
 
@@ -598,6 +692,9 @@
       currentTailPlain = "";
       currentChunks = [];
       currentChunkIndex = 0;
+
+      pickOptions = [];
+      isPicking = false;
 
       confirmInline.style.display = "none";
       storyEl.classList.add("muted");
@@ -662,9 +759,63 @@
     }
 
     // -----------------------------
+    // Motiv-Auswahl UI im Storyfeld
+    // -----------------------------
+    function renderPickOptions(){
+      storyEl.classList.remove("muted");
+      storyEl.innerHTML = `
+        <div class="pick-wrap">
+          <div class="pick-title">Motiv wählen</div>
+          <div id="pickGrid" class="pick-grid">
+            ${pickOptions.map((card, idx) => `
+              <div class="pick-item" data-pick-index="${idx}">
+                ${escapeHtml(card.motif.noun)}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+
+      const grid = document.getElementById("pickGrid");
+      grid.addEventListener("click", async (e) => {
+        const item = e.target.closest(".pick-item");
+        if (!item) return;
+        const idx = Number(item.getAttribute("data-pick-index"));
+        if (!Number.isFinite(idx)) return;
+        await choosePickOption(idx, grid);
+      }, { once: true });
+    }
+
+    async function choosePickOption(index, gridEl){
+      if (!isPicking) return;
+      if (!pickOptions || pickOptions.length !== 4) return;
+      const card = pickOptions[index];
+      if (!card) return;
+
+      // optischer Effekt: alle dimmen, gewähltes hervorheben
+      gridEl.classList.add("picking");
+      const items = gridEl.querySelectorAll(".pick-item");
+      items.forEach((el, i) => {
+        if (i === index) el.classList.add("selected");
+      });
+
+      // kleine Verzögerung für "Plopp"
+      await new Promise(r => setTimeout(r, 220));
+
+      // jetzt erst wirklich verbrauchen und Story generieren
+      isPicking = false;
+      consumeCard(card);
+
+      // Auswahl leeren, damit Klicks nicht doppelt feuern
+      pickOptions = [];
+
+      await generateFairyForCard(card);
+    }
+
+    // -----------------------------
     // Server-Proxy Call
     // -----------------------------
-    async function generateFairy(){
+    async function generateFairyForCard(card){
       updateEndStateIfNeeded();
       if (score >= WIN_SCORE) return;
 
@@ -675,9 +826,8 @@
         return;
       }
 
-      const draw = drawFromDeck();
-      const motifObj = draw.motif;
-      const color = draw.color;
+      const motifObj = card.motif;
+      const color = card.color;
       const verb = chooseVerbForMotif(motifObj.noun);
 
       currentMotif = motifObj;
@@ -685,7 +835,6 @@
       currentColor = color;
 
       confirmInline.style.display = "none";
-      fairyBtn.textContent = "WEITER";
       storyEl.classList.add("muted");
       storyEl.textContent = "… KI schreibt eine neue Geschichte …";
 
@@ -728,8 +877,12 @@
         console.error(err);
         storyEl.classList.remove("muted");
         storyEl.textContent = "Fehler beim Laden. Bitte Internet prüfen.";
+
+        // zurücksetzen, damit man nicht hängt
         currentChunks = [];
         currentChunkIndex = 0;
+        pickOptions = [];
+        isPicking = false;
         setFairyButtonLabel();
       }
     }
@@ -743,33 +896,54 @@
     }
 
     // -----------------------------
-    // Klicklogik: FAIRY -> WEITER -> WEITER -> LÖSCHEN
+    // Klicklogik:
+    // FAIRY -> zeigt 4 Motive
+    // Klick Motiv -> Story Satz 1
+    // danach: WEITER -> WEITER -> LÖSCHEN
     // -----------------------------
     async function handleFairyButton(){
       updateEndStateIfNeeded();
       if (score >= WIN_SCORE) return;
 
-      if (!currentChunks || currentChunks.length !== 3){
-        await generateFairy();
+      // Wenn eine Story läuft:
+      if (currentChunks && currentChunks.length === 3){
+        if (currentChunkIndex >= 2){
+          clearCurrentFairyToStart();
+          return;
+        }
+        showChunk(currentChunkIndex + 1);
         return;
       }
 
-      if (currentChunkIndex >= 2){
-        clearCurrentFairyToStart();
+      // Wenn wir gerade Auswahl anzeigen: FAIRY klick = neue 4 Optionen
+      if (isPicking){
+        dealPickOptions();
+        renderPickOptions();
+        setFairyButtonLabel();
         return;
       }
 
-      showChunk(currentChunkIndex + 1);
+      // Start: 4 Motive anzeigen
+      dealPickOptions();
+      renderPickOptions();
+      setFairyButtonLabel();
     }
 
     async function handleStoryClick(){
       updateEndStateIfNeeded();
       if (score >= WIN_SCORE) return;
 
+      // Wenn Auswahl angezeigt wird, soll ein Klick NICHT "weiterblättern".
+      // (Auswahl erfolgt nur auf die 4 Items)
+      if (isPicking) return;
+
+      // Wenn noch keine Story läuft: wie Button = Auswahl anzeigen
       if (!currentChunks || currentChunks.length !== 3){
-        await generateFairy();
+        await handleFairyButton();
         return;
       }
+
+      // Story weiterblättern bis zum letzten Teil
       if (currentChunkIndex < 2){
         showChunk(currentChunkIndex + 1);
       }
