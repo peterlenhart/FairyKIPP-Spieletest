@@ -22,10 +22,8 @@
       --fk-text: #f7f2ea;
       --fk-muted: rgba(247,242,234,0.72);
 
-      /* neu für Kippregel-Box */
+      /* dunkelbraun fürs Feldchen */
       --fk-brown: #2a160c;
-      --fk-brown-soft: rgba(42,22,12,0.22);
-      --fk-brown-border: rgba(42,22,12,0.70);
     }
 
     *{ box-sizing:border-box; margin:0; padding:0; }
@@ -167,29 +165,28 @@
     }
     .story:active{ filter: brightness(1.04); }
 
-    /* ✅ Kippregel sichtbar & sauber (dunkelbrauner Rahmen, weißer Text) */
-    .kippRuleBox{
-      width: 100%;
+    /* ✅ Kippregel als Feldchen IM Storyfeld */
+    .kipp-inline-wrap{
+      margin-top: 10px;
       display:flex;
       justify-content:center;
-      margin-top: 10px; /* Luft unter Storyfeld */
     }
-    .kippRuleTag{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding: 10px 14px;
-      border-radius: 12px;
-      border: 2px solid var(--fk-brown-border);
-      background: rgba(42,22,12,0.35);
+    .kipp-inline{
+      display:inline-block;
+      padding: 6px 12px;
+      border-radius: 10px;
+      background: var(--fk-brown);
       color: #fff;
-      font-weight: 900;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-size: 1.05rem; /* deutlich sichtbar */
-      box-shadow: 0 10px 18px rgba(0,0,0,0.18);
-      min-width: 190px;
-      text-align:center;
+
+      /* gleiche Schrift wie Story */
+      font-size: inherit;
+      font-weight: inherit;
+      font-style: normal;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+      white-space: nowrap;
+
+      box-shadow: 0 8px 16px rgba(0,0,0,0.18);
     }
 
     /* ---- Motiv-Auswahl im Storyfeld ---- */
@@ -432,11 +429,6 @@
         Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.
       </div>
 
-      <!-- ✅ Kippregel-Box (sichtbar, mit Rahmen) -->
-      <div id="kippRuleBox" class="kippRuleBox hidden">
-        <div id="kippRuleTag" class="kippRuleTag"></div>
-      </div>
-
       <div class="btn-row">
         <button id="btn-erkippt" class="btn-yes">FAIRY ERKIPPT</button>
       </div>
@@ -526,10 +518,6 @@
     // -----------------------------
     const fairyBtn = document.getElementById("fairy-btn");
     const storyEl = document.getElementById("story");
-
-    const kippRuleBox = document.getElementById("kippRuleBox");
-    const kippRuleTag = document.getElementById("kippRuleTag");
-
     const btnErkippt = document.getElementById("btn-erkippt");
     const scoreEl = document.getElementById("score");
     const endScoreEl = document.getElementById("endScore");
@@ -567,32 +555,9 @@
       const idx = Math.floor(Math.random() * KIPP_RULES.length);
       return KIPP_RULES[idx];
     }
-
     function formatKippRule(rule){
       if (!rule) return "";
-      // exakt so wie du willst:
       return `1-${rule.max} ${rule.mode}`;
-    }
-
-    function hideKippRule(){
-      kippRuleBox.classList.add("hidden");
-      kippRuleTag.textContent = "";
-    }
-
-    function updateKippRuleVisibility(){
-      const shouldShow =
-        !!currentKippRule &&
-        currentChunks && currentChunks.length === 3 &&
-        currentChunkIndex === 2 &&
-        !isPicking &&
-        score < WIN_SCORE;
-
-      if (shouldShow){
-        kippRuleTag.textContent = formatKippRule(currentKippRule);
-        kippRuleBox.classList.remove("hidden");
-      } else {
-        hideKippRule();
-      }
     }
 
     // -----------------------------
@@ -747,7 +712,6 @@
       setLockedUI(true);
       gameEl.classList.add("hidden");
       endscreenEl.classList.remove("hidden");
-      hideKippRule();
       updateScore();
       endLine1.textContent = `${WIN_SCORE} perfekte`;
       endLine2.textContent = "gewonnen";
@@ -784,7 +748,6 @@
       isPicking = false;
 
       currentKippRule = null;
-      hideKippRule();
 
       confirmInline.style.display = "none";
       storyEl.classList.add("muted");
@@ -853,8 +816,6 @@
     // Motiv-Auswahl UI im Storyfeld
     // -----------------------------
     function renderPickOptions(){
-      hideKippRule();
-
       storyEl.classList.remove("muted");
       storyEl.style.opacity = "1";
       storyEl.innerHTML = `
@@ -912,6 +873,29 @@
     }
 
     // -----------------------------
+    // ✅ Rendering: Chunk anzeigen (mit Kippregel nur bei Satz 3)
+    // -----------------------------
+    function renderCurrentChunk(){
+      if (!currentChunks || currentChunks.length !== 3) return;
+
+      const chunkHtml = currentChunks[currentChunkIndex] || "";
+
+      if (currentChunkIndex === 2 && currentKippRule){
+        const rule = escapeHtml(formatKippRule(currentKippRule));
+        storyEl.innerHTML = `
+          ${chunkHtml}
+          <div class="kipp-inline-wrap">
+            <div class="kipp-inline">${rule}</div>
+          </div>
+        `;
+      } else {
+        storyEl.innerHTML = chunkHtml;
+      }
+
+      setFairyButtonLabel();
+    }
+
+    // -----------------------------
     // Server-Proxy Call
     // -----------------------------
     async function generateFairyForCard(card){
@@ -925,9 +909,8 @@
         return;
       }
 
-      // ✅ pro Fairy eine Kippregel ziehen (8 Varianten)
+      // ✅ pro Fairy eine Kippregel ziehen
       currentKippRule = pickRandomKippRule();
-      hideKippRule();
 
       const motifObj = card.motif;
       const color = card.color;
@@ -973,10 +956,8 @@
         storyEl.style.opacity = "0";
         await wait(120);
         storyEl.classList.remove("muted");
-        storyEl.innerHTML = currentChunks[0];
+        renderCurrentChunk();
         storyEl.style.opacity = "1";
-        setFairyButtonLabel();
-        updateKippRuleVisibility();
 
       } catch(err){
         console.error(err);
@@ -988,7 +969,6 @@
         pickOptions = [];
         isPicking = false;
         currentKippRule = null;
-        hideKippRule();
         setFairyButtonLabel();
       }
     }
@@ -1000,10 +980,8 @@
       storyEl.style.opacity = "0";
       setTimeout(() => {
         storyEl.classList.remove("muted");
-        storyEl.innerHTML = currentChunks[currentChunkIndex];
+        renderCurrentChunk();
         storyEl.style.opacity = "1";
-        setFairyButtonLabel();
-        updateKippRuleVisibility();
       }, 120);
     }
 
