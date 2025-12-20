@@ -25,13 +25,20 @@ export default async function handler(req, res) {
       content:
         "Du schreibst sehr kurze, neutrale Mini-Geschichten auf Deutsch für ein Gesellschaftsspiel.\n" +
         "Du MUSST GENAU zwei Sätze liefern.\n" +
+        "\n" +
+        "Stil:\n" +
+        "- leicht märchenhaft, ruhig, mit kleinen Metaphern; nicht kitschig, nicht kindisch.\n" +
+        "- Satz 1 darf länger sein (auch mit Komma/Nebensatz), aber bleibt ein einziger Satz.\n" +
+        "- Satz 2 ist ausschließlich wörtliche Rede.\n" +
+        "\n" +
         "Regeln:\n" +
-        "- Satz 1: Situation, ohne das Motivwort.\n" +
-        "- Satz 2: nur wörtliche Rede.\n" +
+        "- Satz 1: Situation/Atmosphäre, ohne das Motivwort.\n" +
+        "- Satz 2: nur wörtliche Rede (keine Erzählertexte davor/danach).\n" +
         "- Verwende keine Farbwörter im Text.\n" +
-        "- Verwende das Motivwort NICHT.\n" +
+        "- Verwende das Motivwort NICHT, auch nicht als Teil eines zusammengesetzten Wortes.\n" +
         "- Kein Genitiv.\n" +
-        "- Kein 'sagte', 'meinte', 'dachte'.\n"
+        "- Kein 'sagte', 'meinte', 'dachte'.\n" +
+        "- Keine Namen, keine Orte mit Eigennamen.\n"
     };
 
     const userMessage = {
@@ -51,7 +58,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [systemMessage, userMessage],
-        temperature: typeof temperature === "number" ? temperature : 0.8,
+        temperature: typeof temperature === "number" ? temperature : 0.9,
         max_tokens: 220,
       }),
     });
