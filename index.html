@@ -837,10 +837,10 @@
       // Auswahl leeren, damit Klicks nicht doppelt feuern
       pickOptions = [];
 
-      // ✅ WICHTIG: Kein extra Motiv mehr anzeigen – nur neutraler Ladehinweis
+      // ✅ Ladehinweis kleiner & passiv (wie Start-Hinweis): story wird "muted"
       storyEl.style.opacity = "0";
       await wait(120);
-      storyEl.classList.remove("muted");
+      storyEl.classList.add("muted");
       storyEl.innerHTML = "… KI schreibt eine neue Geschichte …";
       storyEl.style.opacity = "1";
 
@@ -856,7 +856,7 @@
 
       const token = getTokenFromUrl();
       if (!token){
-        storyEl.classList.remove("muted");
+        storyEl.classList.add("muted");
         storyEl.textContent = "Test-Link ungültig: Token fehlt. Bitte den kompletten Verlag-Link verwenden.";
         return;
       }
@@ -912,7 +912,7 @@
 
       } catch(err){
         console.error(err);
-        storyEl.classList.remove("muted");
+        storyEl.classList.add("muted");
         storyEl.textContent = "Fehler beim Laden. Bitte Internet prüfen.";
 
         currentChunks = [];
