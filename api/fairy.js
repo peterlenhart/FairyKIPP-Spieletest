@@ -31,6 +31,10 @@ export default async function handler(req, res) {
         "- Satz 1 darf länger sein (auch mit Komma/Nebensatz), aber bleibt ein einziger Satz.\n" +
         "- Satz 2 ist ausschließlich wörtliche Rede.\n" +
         "\n" +
+        "Längenregel (wichtig):\n" +
+        "- Satz 1 darf MAXIMAL 95 Zeichen haben (inklusive Leerzeichen und Satzzeichen).\n" +
+        "- Wenn Satz 1 länger wäre: kürze ihn selbstständig, bis er <= 95 Zeichen ist.\n" +
+        "\n" +
         "Regeln:\n" +
         "- Satz 1: Situation/Atmosphäre, ohne das Motivwort.\n" +
         "- Satz 2: nur wörtliche Rede (keine Erzählertexte davor/danach).\n" +
