@@ -162,6 +162,19 @@
     }
     .story:active{ filter: brightness(1.04); }
 
+    /* --- Kippregel: klein, passiv, unter der Fairy --- */
+    .kipp-rule{
+      width: 100%;
+      text-align: center;
+      color: rgba(247,242,234,0.72);
+      font-style: italic;
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      margin-top: -6px; /* wirkt optisch "angebunden" ans Storyfeld */
+      user-select: none;
+    }
+
     /* ---- Motiv-Auswahl im Storyfeld ---- */
     .pick-wrap{
       display:flex;
@@ -223,28 +236,6 @@
       transform: translateY(10px) scale(0.98) !important;
       filter: grayscale(0.1) !important;
       pointer-events: none !important;
-    }
-
-    /* (bleibt drin, auch wenn nicht mehr genutzt – damit nix verrutscht) */
-    .chosen-wrap{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap: 10px;
-      min-height: 120px;
-    }
-    .chosen-word{
-      font-weight: 900;
-      font-size: 1.6rem;
-      letter-spacing: 0.02em;
-      color:#2a160c;
-    }
-    .chosen-loading{
-      font-size: 1.0rem;
-      font-weight: 600;
-      color: rgba(42,22,12,0.62);
-      font-style: italic;
     }
 
     .confirm-inline{
@@ -425,6 +416,9 @@
         Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.
       </div>
 
+      <!-- Kippregel (erscheint erst nach dem 3. Teil) -->
+      <div id="kippRule" class="kipp-rule hidden"></div>
+
       <div class="btn-row">
         <button id="btn-erkippt" class="btn-yes">FAIRY ERKIPPT</button>
       </div>
@@ -514,6 +508,8 @@
     // -----------------------------
     const fairyBtn = document.getElementById("fairy-btn");
     const storyEl = document.getElementById("story");
+    const kippRuleEl = document.getElementById("kippRule");
+
     const btnErkippt = document.getElementById("btn-erkippt");
     const scoreEl = document.getElementById("score");
     const endScoreEl = document.getElementById("endScore");
@@ -531,6 +527,48 @@
     // Spielziel: 4 Treffer gewinnen
     // -----------------------------
     const WIN_SCORE = 4;
+
+    // -----------------------------
+    // Kippregel-Set (Start nur 2 Varianten)
+    // -----------------------------
+    const KIPP_RULES = [
+      { max: 6, mode: "EGAL" },
+      { max: 5, mode: "EGAL" }
+    ];
+    let currentKippRule = null;
+
+    function pickRandomKippRule(){
+      const idx = Math.floor(Math.random() * KIPP_RULES.length);
+      return KIPP_RULES[idx];
+    }
+
+    function formatKippRule(rule){
+      if (!rule) return "";
+      // Optisch clean: 1–6 EGAL
+      return `Kippregel: 1–${rule.max} ${rule.mode}`;
+    }
+
+    function hideKippRule(){
+      kippRuleEl.classList.add("hidden");
+      kippRuleEl.textContent = "";
+    }
+
+    function updateKippRuleVisibility(){
+      // Regel nur zeigen, wenn die Fairy fertig gelesen ist (Teil 3 sichtbar)
+      const shouldShow =
+        !!currentKippRule &&
+        currentChunks && currentChunks.length === 3 &&
+        currentChunkIndex === 2 &&
+        !isPicking &&
+        score < WIN_SCORE;
+
+      if (shouldShow){
+        kippRuleEl.textContent = formatKippRule(currentKippRule);
+        kippRuleEl.classList.remove("hidden");
+      } else {
+        hideKippRule();
+      }
+    }
 
     // -----------------------------
     // Spielzustand
@@ -684,6 +722,7 @@
       setLockedUI(true);
       gameEl.classList.add("hidden");
       endscreenEl.classList.remove("hidden");
+      hideKippRule();
       updateScore();
       endLine1.textContent = `${WIN_SCORE} perfekte`;
       endLine2.textContent = "gewonnen";
@@ -718,6 +757,9 @@
 
       pickOptions = [];
       isPicking = false;
+
+      currentKippRule = null;
+      hideKippRule();
 
       confirmInline.style.display = "none";
       storyEl.classList.add("muted");
@@ -786,6 +828,8 @@
     // Motiv-Auswahl UI im Storyfeld
     // -----------------------------
     function renderPickOptions(){
+      hideKippRule();
+
       storyEl.classList.remove("muted");
       storyEl.style.opacity = "1";
       storyEl.innerHTML = `
@@ -819,7 +863,6 @@
       const card = pickOptions[index];
       if (!card) return;
 
-      // optischer Effekt: alle dimmen, gewähltes hervorheben
       gridEl.classList.add("picking");
       const items = Array.from(gridEl.querySelectorAll(".pick-item"));
       items.forEach((el, i) => {
@@ -827,17 +870,14 @@
         else el.classList.add("gone");
       });
 
-      // kurz stehen lassen
       await wait(220);
 
-      // jetzt erst wirklich verbrauchen und Story generieren
       isPicking = false;
       consumeCard(card);
 
-      // Auswahl leeren, damit Klicks nicht doppelt feuern
       pickOptions = [];
 
-      // ✅ Ladehinweis kleiner & passiv (wie Start-Hinweis): story wird "muted"
+      // Ladehinweis klein & passiv (wie Start-Hinweis)
       storyEl.style.opacity = "0";
       await wait(120);
       storyEl.classList.add("muted");
@@ -860,6 +900,10 @@
         storyEl.textContent = "Test-Link ungültig: Token fehlt. Bitte den kompletten Verlag-Link verwenden.";
         return;
       }
+
+      // ✅ pro Fairy eine Kippregel ziehen (Start: nur 1–6 EGAL / 1–5 EGAL)
+      currentKippRule = pickRandomKippRule();
+      hideKippRule();
 
       const motifObj = card.motif;
       const color = card.color;
@@ -902,13 +946,13 @@
         currentChunks = splitIntoThreeParts(currentStoryFullPlain, currentTailPlain, color);
         currentChunkIndex = 0;
 
-        // weicher Übergang in Satz 1
         storyEl.style.opacity = "0";
         await wait(120);
         storyEl.classList.remove("muted");
         storyEl.innerHTML = currentChunks[0];
         storyEl.style.opacity = "1";
         setFairyButtonLabel();
+        updateKippRuleVisibility();
 
       } catch(err){
         console.error(err);
@@ -919,6 +963,8 @@
         currentChunkIndex = 0;
         pickOptions = [];
         isPicking = false;
+        currentKippRule = null;
+        hideKippRule();
         setFairyButtonLabel();
       }
     }
@@ -933,6 +979,7 @@
         storyEl.innerHTML = currentChunks[currentChunkIndex];
         storyEl.style.opacity = "1";
         setFairyButtonLabel();
+        updateKippRuleVisibility();
       }, 120);
     }
 
