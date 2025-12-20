@@ -21,6 +21,11 @@
       --fk-border: rgba(0,0,0,0.35);
       --fk-text: #f7f2ea;
       --fk-muted: rgba(247,242,234,0.72);
+
+      /* neu für Kippregel-Box */
+      --fk-brown: #2a160c;
+      --fk-brown-soft: rgba(42,22,12,0.22);
+      --fk-brown-border: rgba(42,22,12,0.70);
     }
 
     *{ box-sizing:border-box; margin:0; padding:0; }
@@ -162,17 +167,29 @@
     }
     .story:active{ filter: brightness(1.04); }
 
-    /* --- Kippregel: klein, passiv, unter der Fairy --- */
-    .kipp-rule{
+    /* ✅ Kippregel sichtbar & sauber (dunkelbrauner Rahmen, weißer Text) */
+    .kippRuleBox{
       width: 100%;
-      text-align: center;
-      color: rgba(247,242,234,0.72);
-      font-style: italic;
-      font-size: 0.95rem;
-      font-weight: 500;
-      letter-spacing: 0.02em;
-      margin-top: -6px; /* wirkt optisch "angebunden" ans Storyfeld */
-      user-select: none;
+      display:flex;
+      justify-content:center;
+      margin-top: 10px; /* Luft unter Storyfeld */
+    }
+    .kippRuleTag{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 2px solid var(--fk-brown-border);
+      background: rgba(42,22,12,0.35);
+      color: #fff;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 1.05rem; /* deutlich sichtbar */
+      box-shadow: 0 10px 18px rgba(0,0,0,0.18);
+      min-width: 190px;
+      text-align:center;
     }
 
     /* ---- Motiv-Auswahl im Storyfeld ---- */
@@ -230,7 +247,6 @@
       box-shadow: 0 0 14px rgba(242,150,0,0.18), 0 12px 22px rgba(0,0,0,0.12);
     }
 
-    /* WEICHER: die 3 anderen verschwinden sauber */
     .pick-item.gone{
       opacity: 0 !important;
       transform: translateY(10px) scale(0.98) !important;
@@ -416,8 +432,10 @@
         Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.
       </div>
 
-      <!-- Kippregel (erscheint erst nach dem 3. Teil) -->
-      <div id="kippRule" class="kipp-rule hidden"></div>
+      <!-- ✅ Kippregel-Box (sichtbar, mit Rahmen) -->
+      <div id="kippRuleBox" class="kippRuleBox hidden">
+        <div id="kippRuleTag" class="kippRuleTag"></div>
+      </div>
 
       <div class="btn-row">
         <button id="btn-erkippt" class="btn-yes">FAIRY ERKIPPT</button>
@@ -508,7 +526,9 @@
     // -----------------------------
     const fairyBtn = document.getElementById("fairy-btn");
     const storyEl = document.getElementById("story");
-    const kippRuleEl = document.getElementById("kippRule");
+
+    const kippRuleBox = document.getElementById("kippRuleBox");
+    const kippRuleTag = document.getElementById("kippRuleTag");
 
     const btnErkippt = document.getElementById("btn-erkippt");
     const scoreEl = document.getElementById("score");
@@ -529,11 +549,17 @@
     const WIN_SCORE = 4;
 
     // -----------------------------
-    // Kippregel-Set (Start nur 2 Varianten)
+    // ✅ Kippregel-Set: exakt 8 Möglichkeiten
     // -----------------------------
     const KIPP_RULES = [
-      { max: 6, mode: "EGAL" },
-      { max: 5, mode: "EGAL" }
+      { max: 3, mode: "IM" },
+      { max: 3, mode: "EGAL" },
+      { max: 4, mode: "IM" },
+      { max: 4, mode: "EGAL" },
+      { max: 5, mode: "IM" },
+      { max: 5, mode: "EGAL" },
+      { max: 6, mode: "IM" },
+      { max: 6, mode: "EGAL" }
     ];
     let currentKippRule = null;
 
@@ -544,17 +570,16 @@
 
     function formatKippRule(rule){
       if (!rule) return "";
-      // Optisch clean: 1–6 EGAL
-      return `Kippregel: 1–${rule.max} ${rule.mode}`;
+      // exakt so wie du willst:
+      return `1-${rule.max} ${rule.mode}`;
     }
 
     function hideKippRule(){
-      kippRuleEl.classList.add("hidden");
-      kippRuleEl.textContent = "";
+      kippRuleBox.classList.add("hidden");
+      kippRuleTag.textContent = "";
     }
 
     function updateKippRuleVisibility(){
-      // Regel nur zeigen, wenn die Fairy fertig gelesen ist (Teil 3 sichtbar)
       const shouldShow =
         !!currentKippRule &&
         currentChunks && currentChunks.length === 3 &&
@@ -563,8 +588,8 @@
         score < WIN_SCORE;
 
       if (shouldShow){
-        kippRuleEl.textContent = formatKippRule(currentKippRule);
-        kippRuleEl.classList.remove("hidden");
+        kippRuleTag.textContent = formatKippRule(currentKippRule);
+        kippRuleBox.classList.remove("hidden");
       } else {
         hideKippRule();
       }
@@ -874,10 +899,9 @@
 
       isPicking = false;
       consumeCard(card);
-
       pickOptions = [];
 
-      // Ladehinweis klein & passiv (wie Start-Hinweis)
+      // Ladehinweis klein & passiv
       storyEl.style.opacity = "0";
       await wait(120);
       storyEl.classList.add("muted");
@@ -901,7 +925,7 @@
         return;
       }
 
-      // ✅ pro Fairy eine Kippregel ziehen (Start: nur 1–6 EGAL / 1–5 EGAL)
+      // ✅ pro Fairy eine Kippregel ziehen (8 Varianten)
       currentKippRule = pickRandomKippRule();
       hideKippRule();
 
