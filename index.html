@@ -9,13 +9,11 @@
 
   <style>
     :root{
-      /* Spielerfarben (Basis, bleiben vorhanden) */
       --fk-blue: rgb(0, 101, 171);
       --fk-violet: rgb(170, 0, 120);
       --fk-green: rgb(59, 165, 43);
       --fk-orange: rgb(242, 150, 0);
 
-      /* Hintergrund / Panel */
       --fk-bg: #2f1b12;
       --fk-bg-deep: #23130d;
       --fk-panel: #d8c2a2;
@@ -69,7 +67,7 @@
       font-weight:700;
       font-size:1.55rem;
       letter-spacing:0.22em;
-      color: var(--fk-green); /* KIPP grün */
+      color: var(--fk-green);
       text-transform:uppercase;
       text-shadow: 0 0 10px rgba(0,101,171,0.22);
     }
@@ -121,8 +119,8 @@
     }
     .btn-main:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.95); }
 
-    .btn-yes, .btn-no{
-      min-width: 168px;
+    .btn-yes{
+      min-width: 190px;
       padding: 11px 14px;
       border-radius: 12px;
       font-size: 0.95rem;
@@ -130,21 +128,12 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color:#fff;
-    }
-    .btn-yes{
       background: var(--fk-green);
       box-shadow:
         0 0 14px rgba(59,165,43,0.40),
         0 10px 20px rgba(0,0,0,0.18);
     }
-    .btn-no{
-      background: var(--fk-violet);
-      box-shadow:
-        0 0 14px rgba(170,0,120,0.35),
-        0 10px 20px rgba(0,0,0,0.16);
-      border: none;
-    }
-    .btn-yes:active, .btn-no:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.95); }
+    .btn-yes:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.95); }
 
     .story{
       width:100%;
@@ -162,6 +151,7 @@
       box-shadow:
         0 18px 28px rgba(0,0,0,0.22),
         inset 0 1px 0 rgba(255,255,255,0.10);
+      cursor:pointer;
     }
     .story.muted{
       color: rgba(42,22,12,0.62);
@@ -169,7 +159,6 @@
       font-size: 1.0rem;
       font-weight: 500;
     }
-    .story{ cursor:pointer; }
     .story:active{ filter: brightness(1.04); }
 
     .confirm-inline{
@@ -240,7 +229,6 @@
         0 10px 24px rgba(0,0,0,0.20);
     }
 
-    /* Nur noch 1 Button -> zentrieren */
     .nav-row{
       width: 100%;
       display:flex;
@@ -269,7 +257,6 @@
       pointer-events: none;
       filter: grayscale(0.2);
     }
-
     .hidden{ display:none !important; }
 
     .endscreen{
@@ -352,9 +339,9 @@
         Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.
       </div>
 
+      <!-- NUR NOCH EIN BUTTON, MITTIG -->
       <div class="btn-row">
         <button id="btn-erkippt" class="btn-yes">FAIRY ERKIPPT</button>
-        <button id="btn-nicht" class="btn-no">NICHT ERKIPPT</button>
       </div>
 
       <div id="confirmInline" class="confirm-inline">
@@ -379,9 +366,9 @@
       <div class="end-center">
         <div id="endScore" class="end-number">0</div>
         <div class="end-text">
-          <div>Perfekte</div>
+          <div id="endLine1">4 perfekte</div>
           <span class="big">FAIRY KIPPs</span>
-          <div class="muted">von 6 möglichen</div>
+          <div class="muted" id="endLine2">gewonnen</div>
         </div>
       </div>
       <div class="nav-row end-nav">
@@ -443,9 +430,10 @@
     const fairyBtn = document.getElementById("fairy-btn");
     const storyEl = document.getElementById("story");
     const btnErkippt = document.getElementById("btn-erkippt");
-    const btnNicht = document.getElementById("btn-nicht");
     const scoreEl = document.getElementById("score");
     const endScoreEl = document.getElementById("endScore");
+    const endLine1 = document.getElementById("endLine1");
+    const endLine2 = document.getElementById("endLine2");
     const newgameBtn = document.getElementById("newgame");
     const endNewgameBtn = document.getElementById("end-newgame");
     const confirmInline = document.getElementById("confirmInline");
@@ -455,24 +443,31 @@
     const endscreenEl = document.getElementById("endscreen");
 
     // -----------------------------
+    // Spielziel: 4 Treffer gewinnen
+    // -----------------------------
+    const WIN_SCORE = 4;
+
+    // -----------------------------
     // Spielzustand
     // -----------------------------
-    let unusedMotifs = [];
     let unusedVerbsByMotif = {};
     let currentMotif = null;
     let currentVerb = null;
     let currentColor = null;
+
     let currentStoryFullPlain = "";
     let currentTailPlain = "";
     let currentChunks = [];
     let currentChunkIndex = 0;
+
     let score = 0;
-    let attempts = 0;
-    const maxAttempts = 6;
 
     // -----------------------------
-    // Helpers
+    // 48er-Deck (Motiv × Farbe) ohne Doppler
     // -----------------------------
+    let deck = [];
+    let deckIndex = 0;
+
     function shuffleArray(arr){
       const a = arr.slice();
       for (let i = a.length - 1; i > 0; i--){
@@ -482,6 +477,27 @@
       return a;
     }
 
+    function buildDeck(){
+      const d = [];
+      for (const motif of motifsData){
+        for (const color of colorsData){
+          d.push({ motif, color });
+        }
+      }
+      deck = shuffleArray(d);
+      deckIndex = 0;
+    }
+
+    function drawFromDeck(){
+      if (!deck || deck.length !== motifsData.length * colorsData.length || deckIndex >= deck.length){
+        buildDeck();
+      }
+      return deck[deckIndex++];
+    }
+
+    // -----------------------------
+    // Helpers
+    // -----------------------------
     function escapeHtml(s){
       return String(s)
         .replace(/&/g, "&amp;")
@@ -489,16 +505,6 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
-    }
-
-    function initUnusedMotifs(){ unusedMotifs = motifsData.slice(); }
-
-    function chooseMotifNoImmediateRepeat(){
-      if (unusedMotifs.length === 0) initUnusedMotifs();
-      const idx = Math.floor(Math.random() * unusedMotifs.length);
-      const motif = unusedMotifs[idx];
-      unusedMotifs.splice(idx, 1);
-      return motif;
     }
 
     function getAllowedVerbsForMotif(noun){
@@ -518,7 +524,6 @@
       return unusedVerbsByMotif[noun].pop();
     }
 
-    // Farbadjektive NICHT mehr einfärben:
     function highlightTailColor(text, adjective){
       return escapeHtml(text);
     }
@@ -547,7 +552,6 @@
     function setLockedUI(locked){
       fairyBtn.classList.toggle("locked", locked);
       btnErkippt.classList.toggle("locked", locked);
-      btnNicht.classList.toggle("locked", locked);
       storyEl.classList.toggle("locked", locked);
     }
 
@@ -562,26 +566,27 @@
       gameEl.classList.add("hidden");
       endscreenEl.classList.remove("hidden");
       updateScore();
+
+      // Endtext fix auf 4 gewonnen
+      endLine1.textContent = `${WIN_SCORE} perfekte`;
+      endLine2.textContent = "gewonnen";
     }
 
     function updateEndStateIfNeeded(){
-      if (attempts >= maxAttempts){
+      if (score >= WIN_SCORE){
         showEndScreen();
       }
     }
 
     function setFairyButtonLabel(){
-      // Wenn 3. Teil angezeigt wird, soll der Button "LÖSCHEN" werden
       if (currentChunks && currentChunks.length === 3 && currentChunkIndex === 2){
         fairyBtn.textContent = "LÖSCHEN";
         return;
       }
-      // Wenn eine Fairy läuft (Chunks existieren), bleibt es "WEITER"
       if (currentChunks && currentChunks.length === 3){
         fairyBtn.textContent = "WEITER";
         return;
       }
-      // Startzustand
       fairyBtn.textContent = "FAIRY";
     }
 
@@ -597,15 +602,14 @@
       confirmInline.style.display = "none";
       storyEl.classList.add("muted");
       storyEl.innerHTML = 'Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.';
-
       setFairyButtonLabel();
     }
 
     function resetAll(){
       score = 0;
-      attempts = 0;
-      initUnusedMotifs();
       unusedVerbsByMotif = {};
+
+      buildDeck();
 
       endscreenEl.classList.add("hidden");
       gameEl.classList.remove("hidden");
@@ -646,11 +650,7 @@
       const part3Plain = `${verb} ${tail}`.replace(/\s+/g," ").trim();
       const part3Html = highlightTailColor(part3Plain, colorAdj);
 
-      return [
-        escapeHtml(part1),
-        escapeHtml(part2),
-        part3Html
-      ];
+      return [ escapeHtml(part1), escapeHtml(part2), part3Html ];
     }
 
     function takeFirstTwoSentences(text){
@@ -662,13 +662,11 @@
     }
 
     // -----------------------------
-    // Server-Proxy Call (statt API-Key am Gerät)
+    // Server-Proxy Call
     // -----------------------------
     async function generateFairy(){
-      if (attempts >= maxAttempts){
-        updateEndStateIfNeeded();
-        return;
-      }
+      updateEndStateIfNeeded();
+      if (score >= WIN_SCORE) return;
 
       const token = getTokenFromUrl();
       if (!token){
@@ -677,9 +675,10 @@
         return;
       }
 
-      const motifObj = chooseMotifNoImmediateRepeat();
+      const draw = drawFromDeck();
+      const motifObj = draw.motif;
+      const color = draw.color;
       const verb = chooseVerbForMotif(motifObj.noun);
-      const color = colorsData[Math.floor(Math.random() * colorsData.length)];
 
       currentMotif = motifObj;
       currentVerb = verb;
@@ -712,7 +711,6 @@
         }
 
         const baseFixed = normalizeQuoteAndComma(baseText);
-
         const tailPlain = `${motifObj.article} ${color} ${motifObj.noun}`;
         const storyPlain = `${baseFixed}${verb} ${tailPlain}`.replace(/\s+/g," ").trim();
 
@@ -730,7 +728,6 @@
         console.error(err);
         storyEl.classList.remove("muted");
         storyEl.textContent = "Fehler beim Laden. Bitte Internet prüfen.";
-        // Button zurück auf FAIRY, damit man nicht in "WEITER" hängenbleibt
         currentChunks = [];
         currentChunkIndex = 0;
         setFairyButtonLabel();
@@ -749,28 +746,26 @@
     // Klicklogik: FAIRY -> WEITER -> WEITER -> LÖSCHEN
     // -----------------------------
     async function handleFairyButton(){
-      if (attempts >= maxAttempts) return;
+      updateEndStateIfNeeded();
+      if (score >= WIN_SCORE) return;
 
-      // Start: neue Fairy generieren
       if (!currentChunks || currentChunks.length !== 3){
         await generateFairy();
         return;
       }
 
-      // Wenn letzter Teil angezeigt wird: Button ist LÖSCHEN -> zurück zum Start
       if (currentChunkIndex >= 2){
         clearCurrentFairyToStart();
         return;
       }
 
-      // Sonst normal weiter
       showChunk(currentChunkIndex + 1);
     }
 
     async function handleStoryClick(){
-      if (attempts >= maxAttempts) return;
+      updateEndStateIfNeeded();
+      if (score >= WIN_SCORE) return;
 
-      // Story click darf nur bis zum letzten Teil "weiterblättern"
       if (!currentChunks || currentChunks.length !== 3){
         await generateFairy();
         return;
@@ -783,32 +778,26 @@
     fairyBtn.addEventListener("click", handleFairyButton);
     storyEl.addEventListener("click", handleStoryClick);
 
-    btnNicht.addEventListener("click", () => {
-      if (attempts >= maxAttempts) return;
-      attempts += 1;
-      confirmInline.style.display = "none";
-      updateEndStateIfNeeded();
-      if (attempts < maxAttempts){
-        clearCurrentFairyToStart();
-      }
-    });
-
+    // -----------------------------
+    // NUR noch "FAIRY ERKIPPT" -> Bestätigung -> Punkt
+    // -----------------------------
     btnErkippt.addEventListener("click", () => {
-      if (attempts >= maxAttempts) return;
+      updateEndStateIfNeeded();
+      if (score >= WIN_SCORE) return;
+
       confirmInline.style.display = "block";
       confirmInline.scrollIntoView({ behavior:"smooth", block:"nearest" });
     });
 
     confirmOk.addEventListener("click", () => {
       confirmInline.style.display = "none";
-      if (attempts >= maxAttempts) return;
+      if (score >= WIN_SCORE) return;
 
-      attempts += 1;
       score += 1;
       updateScore();
 
       updateEndStateIfNeeded();
-      if (attempts < maxAttempts){
+      if (score < WIN_SCORE){
         clearCurrentFairyToStart();
       }
     });
