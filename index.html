@@ -21,9 +21,6 @@
       --fk-border: rgba(0,0,0,0.35);
       --fk-text: #f7f2ea;
       --fk-muted: rgba(247,242,234,0.72);
-
-      /* dunkelbraun fürs Feldchen */
-      --fk-brown: #2a160c;
     }
 
     *{ box-sizing:border-box; margin:0; padding:0; }
@@ -164,30 +161,6 @@
       font-weight: 500;
     }
     .story:active{ filter: brightness(1.04); }
-
-    /* ✅ Kippregel als Feldchen IM Storyfeld */
-    .kipp-inline-wrap{
-      margin-top: 10px;
-      display:flex;
-      justify-content:center;
-    }
-    .kipp-inline{
-      display:inline-block;
-      padding: 6px 12px;
-      border-radius: 10px;
-      background: var(--fk-brown);
-      color: #fff;
-
-      /* gleiche Schrift wie Story */
-      font-size: inherit;
-      font-weight: inherit;
-      font-style: normal;
-      letter-spacing: 0.02em;
-      line-height: 1.2;
-      white-space: nowrap;
-
-      box-shadow: 0 8px 16px rgba(0,0,0,0.18);
-    }
 
     /* ---- Motiv-Auswahl im Storyfeld ---- */
     .pick-wrap{
@@ -537,11 +510,6 @@
     const WIN_SCORE = 4;
 
     // -----------------------------
-    // ✅ FIXE Kippregel (final)
-    // -----------------------------
-    const FIX_KIPP_RULE_TEXT = "1-4 Richtung frei";
-
-    // -----------------------------
     // Spielzustand
     // -----------------------------
     let unusedVerbsByMotif = {};
@@ -852,24 +820,13 @@
     }
 
     // -----------------------------
-    // ✅ Rendering: Chunk anzeigen (mit fixer Kippregel nur bei Satz 3)
+    // ✅ Rendering: Chunk anzeigen (ohne Kippregel)
     // -----------------------------
     function renderCurrentChunk(){
       if (!currentChunks || currentChunks.length !== 3) return;
 
       const chunkHtml = currentChunks[currentChunkIndex] || "";
-
-      if (currentChunkIndex === 2){
-        const rule = escapeHtml(FIX_KIPP_RULE_TEXT);
-        storyEl.innerHTML = `
-          ${chunkHtml}
-          <div class="kipp-inline-wrap">
-            <div class="kipp-inline">${rule}</div>
-          </div>
-        `;
-      } else {
-        storyEl.innerHTML = chunkHtml;
-      }
+      storyEl.innerHTML = chunkHtml;
 
       setFairyButtonLabel();
     }
