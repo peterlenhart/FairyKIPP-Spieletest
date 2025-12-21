@@ -537,28 +537,9 @@
     const WIN_SCORE = 4;
 
     // -----------------------------
-    // ✅ Kippregel-Set: exakt 8 Möglichkeiten
+    // ✅ FIXE Kippregel (final)
     // -----------------------------
-    const KIPP_RULES = [
-      { max: 3, mode: "IM" },
-      { max: 3, mode: "EGAL" },
-      { max: 4, mode: "IM" },
-      { max: 4, mode: "EGAL" },
-      { max: 5, mode: "IM" },
-      { max: 5, mode: "EGAL" },
-      { max: 6, mode: "IM" },
-      { max: 6, mode: "EGAL" }
-    ];
-    let currentKippRule = null;
-
-    function pickRandomKippRule(){
-      const idx = Math.floor(Math.random() * KIPP_RULES.length);
-      return KIPP_RULES[idx];
-    }
-    function formatKippRule(rule){
-      if (!rule) return "";
-      return `1-${rule.max} ${rule.mode}`;
-    }
+    const FIX_KIPP_RULE_TEXT = "1-4 Richtung frei";
 
     // -----------------------------
     // Spielzustand
@@ -747,8 +728,6 @@
       pickOptions = [];
       isPicking = false;
 
-      currentKippRule = null;
-
       confirmInline.style.display = "none";
       storyEl.classList.add("muted");
       storyEl.style.opacity = "1";
@@ -873,15 +852,15 @@
     }
 
     // -----------------------------
-    // ✅ Rendering: Chunk anzeigen (mit Kippregel nur bei Satz 3)
+    // ✅ Rendering: Chunk anzeigen (mit fixer Kippregel nur bei Satz 3)
     // -----------------------------
     function renderCurrentChunk(){
       if (!currentChunks || currentChunks.length !== 3) return;
 
       const chunkHtml = currentChunks[currentChunkIndex] || "";
 
-      if (currentChunkIndex === 2 && currentKippRule){
-        const rule = escapeHtml(formatKippRule(currentKippRule));
+      if (currentChunkIndex === 2){
+        const rule = escapeHtml(FIX_KIPP_RULE_TEXT);
         storyEl.innerHTML = `
           ${chunkHtml}
           <div class="kipp-inline-wrap">
@@ -908,9 +887,6 @@
         storyEl.textContent = "Test-Link ungültig: Token fehlt. Bitte den kompletten Verlag-Link verwenden.";
         return;
       }
-
-      // ✅ pro Fairy eine Kippregel ziehen
-      currentKippRule = pickRandomKippRule();
 
       const motifObj = card.motif;
       const color = card.color;
@@ -968,7 +944,6 @@
         currentChunkIndex = 0;
         pickOptions = [];
         isPicking = false;
-        currentKippRule = null;
         setFairyButtonLabel();
       }
     }
