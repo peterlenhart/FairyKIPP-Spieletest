@@ -152,7 +152,6 @@
         0 18px 28px rgba(0,0,0,0.22),
         inset 0 1px 0 rgba(255,255,255,0.10);
       cursor:pointer;
-      transition: opacity 180ms ease;
     }
     .story.muted{
       color: rgba(42,22,12,0.62);
@@ -161,68 +160,6 @@
       font-weight: 500;
     }
     .story:active{ filter: brightness(1.04); }
-
-    /* ---- Motiv-Auswahl im Storyfeld ---- */
-    .pick-wrap{
-      display:flex;
-      flex-direction:column;
-      gap: 10px;
-      align-items:center;
-      justify-content:center;
-      min-height: 120px;
-    }
-    .pick-title{
-      font-size: 0.95rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(42,22,12,0.75);
-    }
-    .pick-grid{
-      width:100%;
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      align-items:stretch;
-    }
-    .pick-item{
-      border-radius: 12px;
-      padding: 10px 10px;
-      border: 1px solid rgba(0,0,0,0.12);
-      background: rgba(255,255,255,0.35);
-      font-weight: 900;
-      letter-spacing: 0.02em;
-      color:#2a160c;
-      box-shadow: 0 10px 18px rgba(0,0,0,0.10);
-      cursor:pointer;
-      user-select:none;
-      text-align:center;
-      line-height: 1.2;
-      min-height: 52px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      transform: translateZ(0);
-      transition: transform 140ms ease, filter 140ms ease, opacity 140ms ease;
-    }
-    .pick-item:active{ transform: translateY(1px) scale(0.99); filter:brightness(0.97); }
-
-    .pick-grid.picking .pick-item{ opacity: 0.35; filter: grayscale(0.1); }
-    .pick-grid.picking .pick-item.selected{
-      opacity: 1;
-      filter: none;
-      transform: scale(1.06);
-      background: rgba(255,255,255,0.60);
-      border-color: rgba(242,150,0,0.55);
-      box-shadow: 0 0 14px rgba(242,150,0,0.18), 0 12px 22px rgba(0,0,0,0.12);
-    }
-
-    .pick-item.gone{
-      opacity: 0 !important;
-      transform: translateY(10px) scale(0.98) !important;
-      filter: grayscale(0.1) !important;
-      pointer-events: none !important;
-    }
 
     .confirm-inline{
       display:none;
@@ -402,6 +339,7 @@
         Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.
       </div>
 
+      <!-- NUR NOCH EIN BUTTON, MITTIG -->
       <div class="btn-row">
         <button id="btn-erkippt" class="btn-yes">FAIRY ERKIPPT</button>
       </div>
@@ -524,14 +462,11 @@
 
     let score = 0;
 
-    // Auswahlmodus
-    let pickOptions = []; // 4 Karten (motif+color)
-    let isPicking = false;
-
     // -----------------------------
-    // 48er-Deck (Motiv × Farbe) ohne Doppler (bis Deck leer)
+    // 48er-Deck (Motiv × Farbe) ohne Doppler
     // -----------------------------
-    let remainingDeck = [];
+    let deck = [];
+    let deckIndex = 0;
 
     function shuffleArray(arr){
       const a = arr.slice();
@@ -549,46 +484,15 @@
           d.push({ motif, color });
         }
       }
-      remainingDeck = shuffleArray(d);
+      deck = shuffleArray(d);
+      deckIndex = 0;
     }
 
-    function dealPickOptions(){
-      if (!remainingDeck || remainingDeck.length < 4){
+    function drawFromDeck(){
+      if (!deck || deck.length !== motifsData.length * colorsData.length || deckIndex >= deck.length){
         buildDeck();
       }
-
-      const opts = [];
-      const usedNouns = new Set();
-
-      for (let i = 0; i < remainingDeck.length && opts.length < 4; i++){
-        const card = remainingDeck[i];
-        const noun = card.motif.noun;
-        if (usedNouns.has(noun)) continue;
-        usedNouns.add(noun);
-        opts.push(card);
-      }
-
-      if (opts.length < 4){
-        for (let i = 0; i < remainingDeck.length && opts.length < 4; i++){
-          const card = remainingDeck[i];
-          opts.push(card);
-        }
-      }
-
-      pickOptions = opts.slice(0,4);
-      isPicking = true;
-    }
-
-    function consumeCard(card){
-      const idx = remainingDeck.findIndex(c =>
-        c.motif.noun === card.motif.noun &&
-        c.color === card.color
-      );
-      if (idx !== -1){
-        remainingDeck.splice(idx, 1);
-        return;
-      }
-      buildDeck();
+      return deck[deckIndex++];
     }
 
     // -----------------------------
@@ -662,6 +566,8 @@
       gameEl.classList.add("hidden");
       endscreenEl.classList.remove("hidden");
       updateScore();
+
+      // Endtext fix auf 4 gewonnen
       endLine1.textContent = `${WIN_SCORE} perfekte`;
       endLine2.textContent = "gewonnen";
     }
@@ -693,12 +599,8 @@
       currentChunks = [];
       currentChunkIndex = 0;
 
-      pickOptions = [];
-      isPicking = false;
-
       confirmInline.style.display = "none";
       storyEl.classList.add("muted");
-      storyEl.style.opacity = "1";
       storyEl.innerHTML = 'Tippe auf <strong>FAIRY</strong>, um eine neue Geschichte zu starten.';
       setFairyButtonLabel();
     }
@@ -760,93 +662,22 @@
     }
 
     // -----------------------------
-    // Motiv-Auswahl UI im Storyfeld
-    // -----------------------------
-    function renderPickOptions(){
-      storyEl.classList.remove("muted");
-      storyEl.style.opacity = "1";
-      storyEl.innerHTML = `
-        <div class="pick-wrap">
-          <div class="pick-title">Motiv wählen</div>
-          <div id="pickGrid" class="pick-grid">
-            ${pickOptions.map((card, idx) => `
-              <div class="pick-item" data-pick-index="${idx}">
-                ${escapeHtml(card.motif.noun)}
-              </div>
-            `).join("")}
-          </div>
-        </div>
-      `;
-
-      const grid = document.getElementById("pickGrid");
-      grid.addEventListener("click", async (e) => {
-        const item = e.target.closest(".pick-item");
-        if (!item) return;
-        const idx = Number(item.getAttribute("data-pick-index"));
-        if (!Number.isFinite(idx)) return;
-        await choosePickOption(idx, grid);
-      }, { once: true });
-    }
-
-    function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
-
-    async function choosePickOption(index, gridEl){
-      if (!isPicking) return;
-      if (!pickOptions || pickOptions.length !== 4) return;
-      const card = pickOptions[index];
-      if (!card) return;
-
-      gridEl.classList.add("picking");
-      const items = Array.from(gridEl.querySelectorAll(".pick-item"));
-      items.forEach((el, i) => {
-        if (i === index) el.classList.add("selected");
-        else el.classList.add("gone");
-      });
-
-      await wait(220);
-
-      isPicking = false;
-      consumeCard(card);
-      pickOptions = [];
-
-      // Ladehinweis klein & passiv
-      storyEl.style.opacity = "0";
-      await wait(120);
-      storyEl.classList.add("muted");
-      storyEl.innerHTML = "… KI schreibt eine neue Geschichte …";
-      storyEl.style.opacity = "1";
-
-      await generateFairyForCard(card);
-    }
-
-    // -----------------------------
-    // ✅ Rendering: Chunk anzeigen (ohne Kippregel)
-    // -----------------------------
-    function renderCurrentChunk(){
-      if (!currentChunks || currentChunks.length !== 3) return;
-
-      const chunkHtml = currentChunks[currentChunkIndex] || "";
-      storyEl.innerHTML = chunkHtml;
-
-      setFairyButtonLabel();
-    }
-
-    // -----------------------------
     // Server-Proxy Call
     // -----------------------------
-    async function generateFairyForCard(card){
+    async function generateFairy(){
       updateEndStateIfNeeded();
       if (score >= WIN_SCORE) return;
 
       const token = getTokenFromUrl();
       if (!token){
-        storyEl.classList.add("muted");
+        storyEl.classList.remove("muted");
         storyEl.textContent = "Test-Link ungültig: Token fehlt. Bitte den kompletten Verlag-Link verwenden.";
         return;
       }
 
-      const motifObj = card.motif;
-      const color = card.color;
+      const draw = drawFromDeck();
+      const motifObj = draw.motif;
+      const color = draw.color;
       const verb = chooseVerbForMotif(motifObj.noun);
 
       currentMotif = motifObj;
@@ -854,6 +685,9 @@
       currentColor = color;
 
       confirmInline.style.display = "none";
+      fairyBtn.textContent = "WEITER";
+      storyEl.classList.add("muted");
+      storyEl.textContent = "… KI schreibt eine neue Geschichte …";
 
       try{
         const resp = await fetch(`${PROXY_ENDPOINT}?t=${encodeURIComponent(token)}`, {
@@ -886,21 +720,16 @@
         currentChunks = splitIntoThreeParts(currentStoryFullPlain, currentTailPlain, color);
         currentChunkIndex = 0;
 
-        storyEl.style.opacity = "0";
-        await wait(120);
         storyEl.classList.remove("muted");
-        renderCurrentChunk();
-        storyEl.style.opacity = "1";
+        storyEl.innerHTML = currentChunks[0];
+        setFairyButtonLabel();
 
       } catch(err){
         console.error(err);
-        storyEl.classList.add("muted");
+        storyEl.classList.remove("muted");
         storyEl.textContent = "Fehler beim Laden. Bitte Internet prüfen.";
-
         currentChunks = [];
         currentChunkIndex = 0;
-        pickOptions = [];
-        isPicking = false;
         setFairyButtonLabel();
       }
     }
@@ -908,54 +737,39 @@
     function showChunk(i){
       if (!currentChunks || currentChunks.length !== 3) return;
       currentChunkIndex = Math.max(0, Math.min(2, i));
-
-      storyEl.style.opacity = "0";
-      setTimeout(() => {
-        storyEl.classList.remove("muted");
-        renderCurrentChunk();
-        storyEl.style.opacity = "1";
-      }, 120);
+      storyEl.classList.remove("muted");
+      storyEl.innerHTML = currentChunks[currentChunkIndex];
+      setFairyButtonLabel();
     }
 
     // -----------------------------
-    // Klicklogik
+    // Klicklogik: FAIRY -> WEITER -> WEITER -> LÖSCHEN
     // -----------------------------
     async function handleFairyButton(){
       updateEndStateIfNeeded();
       if (score >= WIN_SCORE) return;
 
-      if (currentChunks && currentChunks.length === 3){
-        if (currentChunkIndex >= 2){
-          clearCurrentFairyToStart();
-          return;
-        }
-        showChunk(currentChunkIndex + 1);
+      if (!currentChunks || currentChunks.length !== 3){
+        await generateFairy();
         return;
       }
 
-      if (isPicking){
-        dealPickOptions();
-        renderPickOptions();
-        setFairyButtonLabel();
+      if (currentChunkIndex >= 2){
+        clearCurrentFairyToStart();
         return;
       }
 
-      dealPickOptions();
-      renderPickOptions();
-      setFairyButtonLabel();
+      showChunk(currentChunkIndex + 1);
     }
 
     async function handleStoryClick(){
       updateEndStateIfNeeded();
       if (score >= WIN_SCORE) return;
 
-      if (isPicking) return;
-
       if (!currentChunks || currentChunks.length !== 3){
-        await handleFairyButton();
+        await generateFairy();
         return;
       }
-
       if (currentChunkIndex < 2){
         showChunk(currentChunkIndex + 1);
       }
@@ -965,7 +779,7 @@
     storyEl.addEventListener("click", handleStoryClick);
 
     // -----------------------------
-    // NUR noch "FAIRY ERKIPPT"
+    // NUR noch "FAIRY ERKIPPT" -> Bestätigung -> Punkt
     // -----------------------------
     btnErkippt.addEventListener("click", () => {
       updateEndStateIfNeeded();
