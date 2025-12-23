@@ -298,6 +298,19 @@
       letter-spacing: 0.02em;
       text-shadow: 0 1px 0 rgba(0,0,0,0.22);
     }
+
+    /* "perfekte" (ohne 4) */
+    .end-text .small{
+      display:block;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: none;
+      margin-top: 2px;
+      color: var(--fk-muted);
+    }
+
+    /* FAIRY KIPPs */
     .end-text .big{
       display:block;
       font-size: 1.55rem;
@@ -307,10 +320,19 @@
       margin: 4px 0;
       color: var(--fk-text);
     }
-    .end-text .muted{
-      color: var(--fk-muted);
-      font-size: 1.05rem;
+
+    /* GEWONNEN: größer als FAIRY KIPPs */
+    .end-text .win{
+      display:block;
+      font-size: 2.10rem;     /* größer als 1.55rem */
+      font-weight: 900;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
       margin-top: 2px;
+      color: var(--fk-text);
+      text-shadow:
+        0 0 10px rgba(242,150,0,0.18),
+        0 10px 22px rgba(0,0,0,0.18);
     }
 
     .end-nav{
@@ -365,12 +387,18 @@
     <div id="endscreen" class="endscreen hidden">
       <div class="end-center">
         <div id="endScore" class="end-number">0</div>
+
         <div class="end-text">
-          <div id="endLine1">perfekte</div>
+          <!-- KEIN "4 perfekte" mehr -->
+          <div id="endLine1" class="small">perfekte</div>
+
           <span class="big">FAIRY KIPPs</span>
-          <div class="muted" id="endLine2">gewonnen</div>
+
+          <!-- GEWONNEN groß + uppercase + größer als FAIRY KIPPs -->
+          <div id="endLine2" class="win">GEWONNEN</div>
         </div>
       </div>
+
       <div class="nav-row end-nav">
         <button id="end-newgame" class="linkbtn">Neues Spiel</button>
       </div>
@@ -567,9 +595,10 @@
       endscreenEl.classList.remove("hidden");
       updateScore();
 
-      // Endtext fix auf 4 gewonnen
-      endLine1.textContent = `${WIN_SCORE} perfekte`;
-      endLine2.textContent = "gewonnen";
+      // FIX: kein "4 perfekte" mehr
+      endLine1.textContent = "perfekte";
+      // FIX: GEWONNEN groß + uppercase (CSS macht Größe)
+      endLine2.textContent = "GEWONNEN";
     }
 
     function updateEndStateIfNeeded(){
@@ -806,8 +835,8 @@
       confirmInline.style.display = "none";
     });
 
-    newgameBtn.addEventListener("click", () => resetAll());
-    endNewgameBtn.addEventListener("click", () => resetAll());
+    document.getElementById("newgame").addEventListener("click", () => resetAll());
+    document.getElementById("end-newgame").addEventListener("click", () => resetAll());
 
     (function init(){
       resetAll();
