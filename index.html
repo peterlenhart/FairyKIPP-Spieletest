@@ -379,6 +379,8 @@
       <div class="bottom">
         <div id="score" class="scoreValue">0</div>
         <div class="nav-row">
+          <!-- NEU: TTS-Button -->
+          <button id="tts-toggle" class="linkbtn">Vorlesen</button>
           <button id="newgame" class="linkbtn">Neues Spiel</button>
         </div>
       </div>
@@ -469,6 +471,7 @@
     const confirmNo = document.getElementById("confirm-no");
     const gameEl = document.getElementById("game");
     const endscreenEl = document.getElementById("endscreen");
+    const ttsBtn = document.getElementById("tts-toggle");
 
     // -----------------------------
     // Spielziel: 4 Treffer gewinnen
@@ -489,6 +492,10 @@
     let currentChunkIndex = 0;
 
     let score = 0;
+
+    // TTS-State
+    let currentUtterance = null;
+    let isSpeaking = false;
 
     // -----------------------------
     // 48er-Deck (Motiv × Farbe) ohne Doppler
@@ -646,6 +653,7 @@
       confirmInline.style.display = "none";
       setLockedUI(false);
       clearCurrentFairyToStart();
+      stopSpeaking();
       updateScore();
     }
 
@@ -691,6 +699,96 @@
     }
 
     // -----------------------------
+    // TTS (Browser Web Speech API)
+    // -----------------------------
+    function updateTtsButton(){
+      if (!ttsBtn) return;
+      if (!("speechSynthesis" in window)){
+        ttsBtn.textContent = "Vorlesen nicht verfügbar";
+        ttsBtn.classList.add("locked");
+        return;
+      }
+      ttsBtn.textContent = isSpeaking ? "Stopp" : "Vorlesen";
+    }
+
+    function pickGermanVoice(){
+      if (!("speechSynthesis" in window)) return null;
+      const voices = window.speechSynthesis.getVoices() || [];
+      if (!voices.length) return null;
+
+      // bevorzugt deutsche Stimmen, evtl. mit "Deutsch" / "German" / "Female" im Namen
+      let best = null;
+      for (const v of voices){
+        const lang = (v.lang || "").toLowerCase();
+        if (lang.startsWith("de")){
+          if (!best) best = v;
+          const name = (v.name || "").toLowerCase();
+          if (name.includes("deutsch") || name.includes("german") || name.includes("female")){
+            return v;
+          }
+        }
+      }
+      return best;
+    }
+
+    function stopSpeaking(){
+      if (!("speechSynthesis" in window)) return;
+      window.speechSynthesis.cancel();
+      isSpeaking = false;
+      currentUtterance = null;
+      updateTtsButton();
+    }
+
+    function speakOrStop(){
+      if (!("speechSynthesis" in window)) return;
+
+      // Wenn bereits gesprochen wird: stoppen
+      if (isSpeaking){
+        stopSpeaking();
+        return;
+      }
+
+      const text = currentStoryFullPlain || storyEl.textContent.trim();
+      if (!text){
+        storyEl.classList.remove("muted");
+        storyEl.textContent = "Bitte zuerst eine FAIRY-Geschichte starten.";
+        return;
+      }
+
+      stopSpeaking(); // sicherheitshalber
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "de-DE";
+      const voice = pickGermanVoice();
+      if (voice) utterance.voice = voice;
+
+      // leicht langsamer & weicher
+      utterance.rate = 0.95;
+      utterance.pitch = 1.02;
+
+      utterance.onend = () => {
+        isSpeaking = false;
+        updateTtsButton();
+      };
+      utterance.onerror = () => {
+        isSpeaking = false;
+        updateTtsButton();
+      };
+
+      currentUtterance = utterance;
+      isSpeaking = true;
+      updateTtsButton();
+      window.speechSynthesis.speak(utterance);
+    }
+
+    if ("speechSynthesis" in window){
+      window.speechSynthesis.addEventListener("voiceschanged", () => {
+        // nur Button-Status aktualisieren, Auswahl passiert in pickGermanVoice()
+        updateTtsButton();
+      });
+    }
+
+    // -----------------------------
     // Server-Proxy Call
     // -----------------------------
     async function generateFairy(){
@@ -703,6 +801,9 @@
         storyEl.textContent = "Test-Link ungültig: Token fehlt. Bitte den kompletten Verlag-Link verwenden.";
         return;
       }
+
+      // laufende Wiedergabe stoppen, wenn neue FAIRY erzeugt wird
+      stopSpeaking();
 
       const draw = drawFromDeck();
       const motifObj = draw.motif;
@@ -835,11 +936,16 @@
       confirmInline.style.display = "none";
     });
 
-    document.getElementById("newgame").addEventListener("click", () => resetAll());
-    document.getElementById("end-newgame").addEventListener("click", () => resetAll());
+    newgameBtn.addEventListener("click", () => resetAll());
+    endNewgameBtn.addEventListener("click", () => resetAll());
+
+    if (ttsBtn){
+      ttsBtn.addEventListener("click", speakOrStop);
+    }
 
     (function init(){
       resetAll();
+      updateTtsButton();
     })();
   </script>
 </body>
